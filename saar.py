@@ -40,7 +40,19 @@ def main():
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
 
-	
+	blank = np.zeros(img.shape)
+	kernel = np.ones((3,3),np.uint8)
+	contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
+	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
+	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
+	kernel = np.ones((2,2),np.uint8)
+	blank = cv2.erode(blank, kernel, 1)
+	cv2.imshow("window title", blank)
+	cv2.waitKey()
+
+
+
+
 
 
 

@@ -5,6 +5,7 @@ import sys
 import glob
 import code
 import tifffile
+from timeit import default_timer as timer
 
 from scipy import ndimage as nd
 
@@ -27,9 +28,10 @@ def nothing(x):
 def processEntireStack(path, threshValue):
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
+	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(10)]  #len(emPaths))]
 	processedStack = []
-	for each in emImages:
+	for ii, each in enumerate(emImages):
+		print str(ii) + " / " + str(len(emImages))
 		threshImg = adjustThresh(each, threshValue)
 		processedImg = contourAndErode(each, threshImg)
 		processedStack.append(processedImg)
@@ -41,14 +43,19 @@ def processEntireStack(path, threshValue):
 def contourAndErode(img, threshImg):
 	blank = np.zeros(img.shape)
 	kernel = np.ones((3,3),np.uint8)
-	contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
+	if cv2.__version__[0] == '3':
+		contourImage, contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
+	else:
+		contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
 	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
-	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
+	#blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
 	kernel = np.ones((2,2),np.uint8)
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
 def main():
+	
+
 	#emFolderPath = "cropedEM/"
 	#emPaths = sorted(glob.glob(emFolderPath +'*'))
 
@@ -77,27 +84,41 @@ def main():
 			threshImg = adjustThresh(img, r)
 
 
-
+	
 	blank = contourAndErode(img, threshImg)
 
 	cv2.imshow("window title", blank)
 	cv2.waitKey()
 
-
+	startMain = timer()
 	print "Contouring entire stack..."
 	blank = processEntireStack('ok', oldThresh)
-
-
+	endContourStack = timer() - startMain
+	start = timer()
 	print "Finding connection..."
 	labels = nd.measurements.label(blank)
 	labels = labels[0]
-
+	endConnections = timer() - start
+	
 	print "Writing file..."
-
+	start = timer()
 	for each in range(labels.shape[2]):
 		print each
 		img = labels[:,:,each]
-		tifffile.imsave("out/" + str(each) + '.tif', labels)
+		tifffile.imsave("out/" + str(each) + '.tif', img)
+	endWritingFile = timer() - start
+
+	endTime = timer()
+
+	with open('runStats.txt', 'w') as f:
+		f.write('Run Stats \n')
+		f.write('Run start: ' + str(startMain) + '\n')
+		f.write('Total time: '+ str(endTime - startMain) + '\n')
+		f.write('Contour time: ' + str(endContourStack) + '\n')
+		f.write('Connection time: ' + str(endConnections) + '\n')
+		f.write('Writing file time: ' + str(endWritingFile) + '\n')
+		f.write('Total number of labels: ' + str(len(np.unique(labels))))
+
 
 
 

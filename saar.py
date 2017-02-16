@@ -20,6 +20,10 @@ import matplotlib.pyplot as plt
 
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
+	kernel = np.ones((2,2),np.uint8)
+	thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_OPEN, kernel)
+	thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_CLOSE, kernel)
+
 	return thresh1
 
 def nothing(x):
@@ -28,7 +32,7 @@ def nothing(x):
 def processEntireStack(path, threshValue):
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(10)]  #len(emPaths))]
+	emImages = [cv2.equalizeHist(cv2.imread(emPaths[z], -1)) for z in xrange(100)] #len(emPaths))]
 	processedStack = []
 	for ii, each in enumerate(emImages):
 		print str(ii) + " / " + str(len(emImages))
@@ -48,7 +52,8 @@ def contourAndErode(img, threshImg):
 	else:
 		contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
 	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
-	#blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
+	kernel = np.ones((2,2),np.uint8)
+	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
 	kernel = np.ones((2,2),np.uint8)
 	blank = cv2.erode(blank, kernel, 1)
 	return blank

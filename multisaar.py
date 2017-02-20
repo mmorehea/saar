@@ -17,6 +17,10 @@ except ImportError:
 
 import matplotlib.pyplot as plt
 
+from multiprocessing import Pool
+from multiprocessing.dummy import Pool as ThreadPool 
+import functools
+
 
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
@@ -26,22 +30,25 @@ def nothing(x):
     pass
 
 def processEntireStack(path, threshValue):
+	pool = ThreadPool(6) 
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
 	processedStack = []
-	for ii, each in enumerate(emImages):
-		print str(ii) + " / " + str(len(emImages))
-		threshImg = adjustThresh(each, threshValue)
-		processedImg = contourAndErode(each, threshImg)
-		processedStack.append(processedImg)
+	#for ii, each in enumerate(emImages):
+	#	print str(ii) + " / " + str(len(emImages))
+	#	threshImg = adjustThresh(each, threshValue)
+	#	processedImg = contourAndErode(each, threshImg)
+	#	processedStack.append(processedImg)
+	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 
-	processedStack = np.dstack(processedStack)
-	return processedStack
+	result2 = pool.map(contourAndErode, result)
+	
+	return result2
 
 
-def contourAndErode(img, threshImg):
-	blank = np.zeros(img.shape)
+def contourAndErode(threshImg):
+	blank = np.zeros(threshImg.shape)
 	kernel = np.ones((3,3),np.uint8)
 	if cv2.__version__[0] == '3':
 		contourImage, contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
@@ -84,6 +91,7 @@ def main():
 			threshImg = adjustThresh(img, r)
 
 
+	
 
 	startMain = timer()
 	print "Contouring entire stack..."
@@ -100,19 +108,20 @@ def main():
 	for each in range(labels.shape[2]):
 		print each
 		img = labels[:,:,each]
+		# code.interact(local=locals())
 		tifffile.imsave("out/" + str(each) + '.tif', img)
 	endWritingFile = timer() - start
 
 	endTime = timer()
 
-	with open('runStats.txt', 'w') as f:
+	with open('runStats_multi.txt', 'w') as f:
 		f.write('Run Stats \n')
 		f.write('Run start: ' + str(startMain) + '\n')
 		f.write('Total time: '+ str(endTime - startMain) + '\n')
 		f.write('Contour time: ' + str(endContourStack) + '\n')
 		f.write('Connection time: ' + str(endConnections) + '\n')
 		f.write('Writing file time: ' + str(endWritingFile) + '\n')
-		f.write('Total number of labels: ' + str(np.unique(labels)))
+		f.write('Total number of labels: ' + str(len(np.unique(labels))))
 
 
 

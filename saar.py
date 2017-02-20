@@ -58,6 +58,8 @@ def contourAndErode(img, threshImg):
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
+
+
 def main():
 	
 

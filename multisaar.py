@@ -24,6 +24,9 @@ import functools
 
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
+	kernel = np.ones((2,2),np.uint8)
+	thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_OPEN, kernel)
+	thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_CLOSE, kernel)
 	return thresh1
 
 def nothing(x):
@@ -34,18 +37,9 @@ def processEntireStack(path, threshValue):
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
-	processedStack = []
-	#for ii, each in enumerate(emImages):
-	#	print str(ii) + " / " + str(len(emImages))
-	#	threshImg = adjustThresh(each, threshValue)
-	#	processedImg = contourAndErode(each, threshImg)
-	#	processedStack.append(processedImg)
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
-
 	result2 = pool.map(contourAndErode, result)
-	
 	return result2
-
 
 def contourAndErode(threshImg):
 	blank = np.zeros(threshImg.shape)
@@ -55,19 +49,12 @@ def contourAndErode(threshImg):
 	else:
 		contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
 	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
-	#blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
+	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
 	kernel = np.ones((2,2),np.uint8)
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
 def main():
-	
-
-	#emFolderPath = "cropedEM/"
-	#emPaths = sorted(glob.glob(emFolderPath +'*'))
-
-	#emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
-	#emImages = np.dstack(emImages)
 	em = "cropedEM/Crop_mendedEM-0000.tiff"
 	img = cv2.imread(em, -1)
 	oldThresh = 200
@@ -108,7 +95,6 @@ def main():
 	for each in range(labels.shape[2]):
 		print each
 		img = labels[:,:,each]
-		# code.interact(local=locals())
 		tifffile.imsave("out/" + str(each) + '.tif', img)
 	endWritingFile = timer() - start
 

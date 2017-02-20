@@ -33,12 +33,13 @@ def nothing(x):
     pass
 
 def processEntireStack(path, threshValue):
-	pool = ThreadPool(6) 
+	pool = ThreadPool(4) 
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
+	print "length of result: " + str(len(result2))
 	return result2
 
 def contourAndErode(threshImg):
@@ -83,6 +84,7 @@ def main():
 	startMain = timer()
 	print "Contouring entire stack..."
 	blank = processEntireStack('ok', oldThresh)
+	blank = np.dstack(blank)
 	endContourStack = timer() - startMain
 	start = timer()
 	print "Finding connection..."
@@ -108,15 +110,6 @@ def main():
 		f.write('Connection time: ' + str(endConnections) + '\n')
 		f.write('Writing file time: ' + str(endWritingFile) + '\n')
 		f.write('Total number of labels: ' + str(len(np.unique(labels))))
-
-
-
-
-
-
-
-
-
 
 
 cv2.destroyAllWindows()

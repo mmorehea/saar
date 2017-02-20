@@ -18,7 +18,7 @@ except ImportError:
 import matplotlib.pyplot as plt
 
 from multiprocessing import Pool
-from multiprocessing.dummy import Pool as ThreadPool 
+from multiprocessing.dummy import Pool as ThreadPool
 import functools
 
 
@@ -33,7 +33,7 @@ def nothing(x):
     pass
 
 def processEntireStack(path, threshValue):
-	pool = ThreadPool(4) 
+	pool = ThreadPool(4)
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
@@ -55,12 +55,27 @@ def contourAndErode(threshImg):
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
+def cleanLabels(array):
+	kernel = np.ones((2,2),np.uint8)
+	for z in xrange(array.shape[2]):
+		img = array[:,:,z]
+
+		uniqueLabels = np.unique(img)
+		for lab in uniqueLabels:
+			blankImg = np.zeros(img.shape)
+			indices = np.where(img==lab)
+			blankImg[indices] = 99999
+			img[indices] = 0
+
+			blankImg = cv2.dilate(blankImg, kernel, 2)
+			blankImg = cv2.erode(blankImg, kernel, 1)
+			img[np.nonzero(blankImg)] = lab
+
 def main():
 	em = "cropedEM/Crop_mendedEM-0000.tiff"
 	img = cv2.imread(em, -1)
 	oldThresh = 200
 	cv2.namedWindow('image')
-	#code.interact(local=locals())
 
 	# create trackbars for picking threshold
 	cv2.createTrackbar('Threshold', 'image', 0, 255, nothing)
@@ -77,10 +92,6 @@ def main():
 		if (r != oldThresh):
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
-
-
-	
-
 	startMain = timer()
 	print "Contouring entire stack..."
 	blank = processEntireStack('ok', oldThresh)
@@ -91,23 +102,28 @@ def main():
 	labels = nd.measurements.label(blank)
 	labels = labels[0]
 	endConnections = timer() - start
-	
+
+	print "Cleaning labels individually..."
+	labels = cleanLabels(labels)
+	endClean = timer() - start
+
 	print "Writing file..."
 	start = timer()
 	for each in range(labels.shape[2]):
 		print each
 		img = labels[:,:,each]
-		tifffile.imsave("out/" + str(each) + '.tif', img)
+		tifffile.imsave("out2/" + str(each) + '.tif', img)
 	endWritingFile = timer() - start
 
 	endTime = timer()
 
-	with open('runStats_multi.txt', 'w') as f:
+	with open('runStats_multi2.txt', 'w') as f:
 		f.write('Run Stats \n')
 		f.write('Run start: ' + str(startMain) + '\n')
 		f.write('Total time: '+ str(endTime - startMain) + '\n')
 		f.write('Contour time: ' + str(endContourStack) + '\n')
 		f.write('Connection time: ' + str(endConnections) + '\n')
+		f.write('Clean time: ' + str(endClean) + '\n')
 		f.write('Writing file time: ' + str(endWritingFile) + '\n')
 		f.write('Total number of labels: ' + str(len(np.unique(labels))))
 

@@ -18,7 +18,7 @@ except ImportError:
 import matplotlib.pyplot as plt
 
 from multiprocessing import Pool
-from multiprocessing.dummy import Pool as ThreadPool 
+from multiprocessing.dummy import Pool as ThreadPool
 import functools
 
 
@@ -56,6 +56,20 @@ def contourAndErode(threshImg):
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
+def cleanLabels(img):
+	kernel = np.ones((2,2),np.uint8)
+
+	uniqueLabels = np.unique(img)
+	for lab in uniqueLabels:
+		blankImg = np.zeros(img.shape)
+		indices = np.where(img==lab)
+		blankImg[indices] = 99999
+		img[indices] = 0
+
+		blankImg = cv2.dilate(blankImg, kernel, 2)
+		blankImg = cv2.erode(blankImg, kernel, 1)
+		img[np.nonzero(blankImg)] = lab
+
 def main():
 	em = "cropedEM/Crop_mendedEM-0000.tiff"
 	img = cv2.imread(em, -1)
@@ -75,10 +89,6 @@ def main():
 		if (r != oldThresh):
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
-
-
-	
-
 	startMain = timer()
 	print "Contouring entire stack..."
 	blank = processEntireStack('ok', oldThresh)
@@ -90,23 +100,29 @@ def main():
 	labels = labels[0]
 	labels = np.uint16(labels) 
 	endConnections = timer() - start
-	
+
+	print "Cleaning labels..."
+	pool = ThreadPool(8)
+	labels = np.dstack(pool.map(cleanLabels, np.dsplit(labels, labels.shape[2])))
+	endClean = timer() - start
+
 	print "Writing file..."
 	start = timer()
-	for each in range(labels.shape[2]):
+	for each in xrange(labels.shape[2]):
 		print each
 		img = labels[:,:,each]
-		tifffile.imsave("out/" + str(each) + '.tif', img)
+		tifffile.imsave("out2/" + str(each) + '.tif', img)
 	endWritingFile = timer() - start
 
 	endTime = timer()
 
-	with open('runStats_multi.txt', 'w') as f:
+	with open('runStats_multi2.txt', 'w') as f:
 		f.write('Run Stats \n')
 		f.write('Run start: ' + str(startMain) + '\n')
 		f.write('Total time: '+ str(endTime - startMain) + '\n')
 		f.write('Contour time: ' + str(endContourStack) + '\n')
 		f.write('Connection time: ' + str(endConnections) + '\n')
+		f.write('Clean time: ' + str(endClean) + '\n')
 		f.write('Writing file time: ' + str(endWritingFile) + '\n')
 		f.write('Total number of labels: ' + str(len(np.unique(labels))))
 

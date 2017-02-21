@@ -25,7 +25,7 @@ import functools
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
 	kernel = np.ones((2,2),np.uint8)
-	thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_OPEN, kernel)
+	#thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_OPEN, kernel)
 	thresh1 = cv2.morphologyEx(thresh1, cv2.MORPH_CLOSE, kernel)
 	return thresh1
 
@@ -33,7 +33,7 @@ def nothing(x):
     pass
 
 def processEntireStack(path, threshValue):
-	pool = ThreadPool(4) 
+	pool = ThreadPool(8) 
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
@@ -50,8 +50,9 @@ def contourAndErode(threshImg):
 	else:
 		contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
 	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
+	kernel = np.ones((2,2),np.uint8)	
 	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
-	kernel = np.ones((2,2),np.uint8)
+
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
@@ -60,7 +61,6 @@ def main():
 	img = cv2.imread(em, -1)
 	oldThresh = 200
 	cv2.namedWindow('image')
-	#code.interact(local=locals())
 
 	# create trackbars for picking threshold
 	cv2.createTrackbar('Threshold', 'image', 0, 255, nothing)
@@ -70,9 +70,7 @@ def main():
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
-
-
-			# get current positions of four trackbars
+		# get current positions of four trackbars
 		r = cv2.getTrackbarPos('Threshold','image')
 		if (r != oldThresh):
 			oldThresh = r
@@ -90,6 +88,7 @@ def main():
 	print "Finding connection..."
 	labels = nd.measurements.label(blank)
 	labels = labels[0]
+	labels = np.uint16(labels) 
 	endConnections = timer() - start
 	
 	print "Writing file..."

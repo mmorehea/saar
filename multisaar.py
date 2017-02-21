@@ -33,7 +33,7 @@ def nothing(x):
     pass
 
 def processEntireStack(path, threshValue):
-	pool = ThreadPool(4)
+	pool = ThreadPool(8)
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
@@ -55,21 +55,19 @@ def contourAndErode(threshImg):
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
-def cleanLabels(array):
+def cleanLabels(img):
 	kernel = np.ones((2,2),np.uint8)
-	for z in xrange(array.shape[2]):
-		img = array[:,:,z]
 
-		uniqueLabels = np.unique(img)
-		for lab in uniqueLabels:
-			blankImg = np.zeros(img.shape)
-			indices = np.where(img==lab)
-			blankImg[indices] = 99999
-			img[indices] = 0
+	uniqueLabels = np.unique(img)
+	for lab in uniqueLabels:
+		blankImg = np.zeros(img.shape)
+		indices = np.where(img==lab)
+		blankImg[indices] = 99999
+		img[indices] = 0
 
-			blankImg = cv2.dilate(blankImg, kernel, 2)
-			blankImg = cv2.erode(blankImg, kernel, 1)
-			img[np.nonzero(blankImg)] = lab
+		blankImg = cv2.dilate(blankImg, kernel, 2)
+		blankImg = cv2.erode(blankImg, kernel, 1)
+		img[np.nonzero(blankImg)] = lab
 
 def main():
 	em = "cropedEM/Crop_mendedEM-0000.tiff"
@@ -103,13 +101,14 @@ def main():
 	labels = labels[0]
 	endConnections = timer() - start
 
-	print "Cleaning labels individually..."
-	labels = cleanLabels(labels)
+	print "Cleaning labels..."
+	pool = ThreadPool(8)
+	labels = np.dstack(pool.map(cleanLabels, np.dsplit(labels, labels.shape[2])))
 	endClean = timer() - start
 
 	print "Writing file..."
 	start = timer()
-	for each in range(labels.shape[2]):
+	for each in xrange(labels.shape[2]):
 		print each
 		img = labels[:,:,each]
 		tifffile.imsave("out2/" + str(each) + '.tif', img)

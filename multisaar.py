@@ -17,10 +17,13 @@ except ImportError:
 
 import matplotlib.pyplot as plt
 
-from multiprocessing import Pool
+import multiprocessing
 from multiprocessing.dummy import Pool as ThreadPool
 import functools
 
+NUMBERCORES = multiprocessing.cpu_count()
+print "Found " + str(NUMBERCORES) + " number of cores. Using " + str(NUMBERCORES - 1) + "."
+NUMBERCORES -= 1
 
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
@@ -33,10 +36,10 @@ def nothing(x):
     pass
 
 def processEntireStack(path, threshValue):
-	pool = ThreadPool(8) 
+	pool = ThreadPool(NUMBERCORES) 
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
+	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(10)]#len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
 	print "length of result: " + str(len(result2))
@@ -57,18 +60,22 @@ def contourAndErode(threshImg):
 	return blank
 
 def cleanLabels(img):
-	kernel = np.ones((2,2),np.uint8)
-
+	kernel = np.ones((5,5),np.uint8)
+	blankResult = np.zeros(img.shape, dtype=np.uint16)
 	uniqueLabels = np.unique(img)
 	for lab in uniqueLabels:
-		blankImg = np.zeros(img.shape)
 		indices = np.where(img==lab)
+		if (indices[0].size < 10):
+			#print "small label detected, skipping..."
+			continue
+		blankImg = np.zeros(img.shape)
 		blankImg[indices] = 99999
 		img[indices] = 0
 
 		blankImg = cv2.dilate(blankImg, kernel, 2)
 		blankImg = cv2.erode(blankImg, kernel, 1)
-		img[np.nonzero(blankImg)] = lab
+		blankResult[np.nonzero(blankImg)] = lab
+	return blankResult
 
 def main():
 	em = "cropedEM/Crop_mendedEM-0000.tiff"
@@ -98,18 +105,19 @@ def main():
 	print "Finding connection..."
 	labels = nd.measurements.label(blank)
 	labels = labels[0]
-	labels = np.uint16(labels) 
 	endConnections = timer() - start
 
 	print "Cleaning labels..."
-	pool = ThreadPool(8)
+	pool = ThreadPool(NUMBERCORES)
 	labels = np.dstack(pool.map(cleanLabels, np.dsplit(labels, labels.shape[2])))
+	labels = np.uint16(labels) 
 	endClean = timer() - start
 
 	print "Writing file..."
 	start = timer()
 	for each in xrange(labels.shape[2]):
 		print each
+		#code.interact(local=locals())
 		img = labels[:,:,each]
 		tifffile.imsave("out2/" + str(each) + '.tif', img)
 	endWritingFile = timer() - start

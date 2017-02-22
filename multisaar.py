@@ -39,7 +39,7 @@ def processEntireStack(path, threshValue):
 	pool = ThreadPool(NUMBERCORES) 
 	emFolderPath = "cropedEM/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(10)]#len(emPaths))]
+	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(100)]#len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
 	print "length of result: " + str(len(result2))
@@ -60,7 +60,7 @@ def contourAndErode(threshImg):
 	return blank
 
 def cleanLabels(img):
-	kernel = np.ones((5,5),np.uint8)
+	kernel = np.ones((14,14),np.uint8)
 	blankResult = np.zeros(img.shape, dtype=np.uint16)
 	uniqueLabels = np.unique(img)
 	for lab in uniqueLabels:
@@ -96,6 +96,8 @@ def main():
 		if (r != oldThresh):
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
+	
+	cv2.destroyAllWindows()
 	startMain = timer()
 	print "Contouring entire stack..."
 	blank = processEntireStack('ok', oldThresh)
@@ -119,7 +121,7 @@ def main():
 		print each
 		#code.interact(local=locals())
 		img = labels[:,:,each]
-		tifffile.imsave("out2/" + str(each) + '.tif', img)
+		tifffile.imsave("out2/" + str(each).zfill(4) + '.tif', img)
 	endWritingFile = timer() - start
 
 	endTime = timer()

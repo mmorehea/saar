@@ -37,9 +37,9 @@ def nothing(x):
 
 def processEntireStack(path, threshValue):
 	pool = ThreadPool(NUMBERCORES) 
-	emFolderPath = "cropedEM/"
+	emFolderPath = "cropMended/"
 	emPaths = sorted(glob.glob(emFolderPath +'*'))
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(100)]#len(emPaths))]
+	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
 	print "length of result: " + str(len(result2))
@@ -78,7 +78,7 @@ def cleanLabels(img):
 	return blankResult
 
 def main():
-	em = "cropedEM/Crop_mendedEM-0000.tiff"
+	em = "cropMended/mendedEM-10000.tif"
 	img = cv2.imread(em, -1)
 	oldThresh = 200
 	cv2.namedWindow('image')
@@ -121,7 +121,7 @@ def main():
 		print each
 		#code.interact(local=locals())
 		img = labels[:,:,each]
-		tifffile.imsave("out2/" + str(each).zfill(4) + '.tif', img)
+		tifffile.imsave("outMended/" + str(each).zfill(4) + '.tif', img)
 	endWritingFile = timer() - start
 
 	endTime = timer()

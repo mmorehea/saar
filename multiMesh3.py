@@ -9,7 +9,7 @@ import multiprocessing
 from multiprocessing.dummy import Pool as ThreadPool
 import queue
 import threading
-
+import os
 
 def calcMesh(label, labelStack):
 
@@ -39,8 +39,8 @@ def worker(q, labelStack):
 
 def main():
 	q = queue.Queue()
-	already_done = sorted(glob.glob("multimesh/*"))
 
+	alreadyDone = glob.glob("multimesh/*")
 
 	labelsFolderPath = "outMended/"
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
@@ -49,8 +49,11 @@ def main():
 	print("Loaded data...")
 	labels = np.unique(labelStack)[1:]
 	print("Found labels...")
+	
+	startIndex = np.where(labels == int(max([os.path.basename(x)[:-4] for x in alreadyDone])))[0][0] + 1
+
 	print("Number of labels", str(len(labels)))
-	for label in labels[len(already_done):]
+	for label in labels[startIndex:]:
 		q.put(label)
 
 	for i in range(7):

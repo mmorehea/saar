@@ -12,7 +12,7 @@ import threading
 
 
 def calcMesh(label, labelStack):
-	
+
 	indices = np.where(labelStack==label)
 	if len(indices[0]) < 5000:
 		print("Too small", str(len(indices[0])))
@@ -39,9 +39,9 @@ def worker(q, labelStack):
 
 def main():
 	q = queue.Queue()
-	
-	
-	
+	already_done = sorted(glob.glob("multimesh/*"))
+
+
 	labelsFolderPath = "outMended/"
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
@@ -50,7 +50,7 @@ def main():
 	labels = np.unique(labelStack)[1:]
 	print("Found labels...")
 	print("Number of labels", str(len(labels)))
-	for label in labels:
+	for label in labels[len(already_done):]
 		q.put(label)
 
 	for i in range(7):
@@ -58,12 +58,12 @@ def main():
 		     t.daemon = True  # thread dies when main thread (only non-daemon thread) exits.
 		     t.start()
 	q.join()
-	
-		
 
-		
-		
-	
+
+
+
+
+
 
 
 if __name__ == "__main__":

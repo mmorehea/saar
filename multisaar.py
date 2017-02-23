@@ -35,10 +35,8 @@ def adjustThresh(originalImg, value):
 def nothing(x):
     pass
 
-def processEntireStack(path, threshValue):
-	pool = ThreadPool(NUMBERCORES) 
-	emFolderPath = "cropMended/"
-	emPaths = sorted(glob.glob(emFolderPath +'*'))
+def processEntireStack(path, threshValue, emPaths):
+	pool = ThreadPool(NUMBERCORES)
 	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
@@ -53,7 +51,7 @@ def contourAndErode(threshImg):
 	else:
 		contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
 	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
-	kernel = np.ones((2,2),np.uint8)	
+	kernel = np.ones((2,2),np.uint8)
 	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
 
 	blank = cv2.erode(blank, kernel, 1)
@@ -62,7 +60,7 @@ def contourAndErode(threshImg):
 def cleanLabels(img):
 	kernel = np.ones((14,14),np.uint8)
 	blankResult = np.zeros(img.shape, dtype=np.uint16)
-	uniqueLabels = np.unique(img)
+	uniqueLabels = np.unique(img)[1:]
 	for lab in uniqueLabels:
 		indices = np.where(img==lab)
 		if (indices[0].size < 10):
@@ -78,7 +76,11 @@ def cleanLabels(img):
 	return blankResult
 
 def main():
-	em = "cropMended/mendedEM-10000.tif"
+	emFolderPath = sys.argv[1]
+	emPaths = sorted(glob.glob(emFolderPath +'*'))
+	outputFolderPath = sys.argv[2]
+
+	em = emPaths[0]
 	img = cv2.imread(em, -1)
 	oldThresh = 200
 	cv2.namedWindow('image')
@@ -87,7 +89,10 @@ def main():
 	cv2.createTrackbar('Threshold', 'image', 0, 255, nothing)
 	threshImg = img
 	while(1):
-		cv2.imshow('image', threshImg)
+		try:
+			cv2.imshow('image', threshImg)
+		except:
+			print 'WARNING: cv2 did not read the image correctly'
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
@@ -96,11 +101,11 @@ def main():
 		if (r != oldThresh):
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
-	
+
 	cv2.destroyAllWindows()
 	startMain = timer()
 	print "Contouring entire stack..."
-	blank = processEntireStack('ok', oldThresh)
+	blank = processEntireStack('ok', oldThresh, emPaths)
 	blank = np.dstack(blank)
 	endContourStack = timer() - startMain
 	start = timer()
@@ -112,7 +117,7 @@ def main():
 	print "Cleaning labels..."
 	pool = ThreadPool(NUMBERCORES)
 	labels = np.dstack(pool.map(cleanLabels, np.dsplit(labels, labels.shape[2])))
-	labels = np.uint16(labels) 
+	labels = np.uint16(labels)
 	endClean = timer() - start
 
 	print "Writing file..."
@@ -121,7 +126,7 @@ def main():
 		print each
 		#code.interact(local=locals())
 		img = labels[:,:,each]
-		tifffile.imsave("outMended/" + str(each).zfill(4) + '.tif', img)
+		tifffile.imsave(outputFolderPath + str(each).zfill(4) + '.tif', img)
 	endWritingFile = timer() - start
 
 	endTime = timer()

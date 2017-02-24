@@ -25,6 +25,24 @@ NUMBERCORES = multiprocessing.cpu_count()
 print "Found " + str(NUMBERCORES) + " number of cores. Using " + str(NUMBERCORES - 1) + "."
 NUMBERCORES -= 1
 
+def findBBDimensions(listofpixels):
+	if len(listofpixels) == 0:
+		return None
+	else:
+		xs = [x[0] for x in listofpixels]
+		ys = [y[1] for y in listofpixels]
+
+		minxs = min(xs)
+		maxxs = max(xs)
+
+		minys = min(ys)
+		maxys = max(ys)
+
+		dx = max(xs) - min(xs)
+		dy = max(ys) - min(ys)
+
+		return [minxs, maxxs+1, minys, maxys+1], [dx, dy]
+
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
 	kernel = np.ones((2,2),np.uint8)
@@ -37,7 +55,7 @@ def nothing(x):
 
 def processEntireStack(path, threshValue, emPaths):
 	pool = ThreadPool(NUMBERCORES)
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(100)] #len(emPaths))]
+	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(100)] # len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
 	print "length of result: " + str(len(result2))
@@ -57,6 +75,13 @@ def contourAndErode(threshImg):
 	blank = cv2.erode(blank, kernel, 1)
 	return blank
 
+def transformBlob(blob, displacement):
+	dx, dy = displacement
+
+	transformedBlob = [(point[0] + dx, point[1] + dy) for point in blob]
+
+	return transformedBlob
+
 def cleanLabels(img):
 	kernel = np.ones((14,14),np.uint8)
 	blankResult = np.zeros(img.shape, dtype=np.uint16)
@@ -66,13 +91,34 @@ def cleanLabels(img):
 		if (indices[0].size < 10):
 			#print "small label detected, skipping..."
 			continue
-		blankImg = np.zeros(img.shape)
-		blankImg[indices] = 99999
-		img[indices] = 0
+		blob = zip(indices[0], indices[1])
+		box, dimensions = findBBDimensions(blob)
+
+		offset = [-10, 10, -10, 10]
+		if (box[0] + offset[0]) < 0:
+			offset[0] = 0 - box[0]
+		if (box[1] + offset[1]) > img.shape[0]:
+			offset[1] = img.shape[0] - box[1]
+		if (box[2] + offset[2]) < 0:
+			offset[2] = 0 - box[2]
+		if (box[3] + offset[3]) > img.shape[1]:
+			offset[3] = img.shape[1] - box[3]
+		window = img[box[0] + offset[0]:box[1] + offset[1],box[2] + offset[2]:box[3] + offset[3]]
+		localIndices = np.where(window==lab)
+		blankImg = np.zeros(window.shape)
+
+		blankImg[localIndices] = 99999
 
 		blankImg = cv2.dilate(blankImg, kernel, 2)
 		blankImg = cv2.erode(blankImg, kernel, 1)
-		blankResult[np.nonzero(blankImg)] = lab
+		nonz = np.nonzero(blankImg)
+		localBlob = zip(nonz[0],nonz[1])
+
+
+		finalBlob = transformBlob(localBlob, (box[0] + offset[0], box[2] + offset[2]))
+
+		blankResult[zip(*finalBlob)] = lab
+
 	return blankResult
 
 def main():
@@ -92,7 +138,7 @@ def main():
 		try:
 			cv2.imshow('image', threshImg)
 		except:
-			print 'WAR'
+			print 'WARNING: cv2 did not read the image correctly'
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
@@ -116,6 +162,8 @@ def main():
 
 	print "Cleaning labels..."
 	pool = ThreadPool(NUMBERCORES)
+	cleanLabels(np.dsplit(labels, labels.shape[2])[0])
+
 	labels = np.dstack(pool.map(cleanLabels, np.dsplit(labels, labels.shape[2])))
 	labels = np.uint16(labels)
 	endClean = timer() - start
@@ -131,7 +179,7 @@ def main():
 
 	endTime = timer()
 
-	with open('runStats_multi.txt', 'w') as f:
+	with open('runStats_multi2.txt', 'w') as f:
 		f.write('Run Stats \n')
 		f.write('Run start: ' + str(startMain) + '\n')
 		f.write('Total time: '+ str(endTime - startMain) + '\n')

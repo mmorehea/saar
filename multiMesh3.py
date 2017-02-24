@@ -50,8 +50,7 @@ def main():
 	labels = np.unique(labelStack)[1:]
 	print("Found labels...")
 	
-	startIndex = np.where(labels == int(max([os.path.basename(x)[:-4] for x in alreadyDone])))[0][0] + 1
-
+	startIndex = np.where(labels == max([int(os.path.basename(x)[:-4]) for x in alreadyDone]))[0][0] + 1
 	print("Number of labels", str(len(labels)))
 	for label in labels[startIndex:]:
 		q.put(label)

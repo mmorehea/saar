@@ -52,6 +52,7 @@ def main():
 	
 	startIndex = np.where(labels == max([int(os.path.basename(x)[:-4]) for x in alreadyDone]))[0][0] + 1
 	print("Number of labels", str(len(labels)))
+	print("Number of labels", str(max(labels)))
 	for label in labels[startIndex:]:
 		q.put(label)
 

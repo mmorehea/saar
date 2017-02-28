@@ -55,7 +55,7 @@ def nothing(x):
 
 def processEntireStack(path, threshValue, emPaths):
 	pool = ThreadPool(NUMBERCORES)
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(100)] # len(emPaths))]
+	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
 	result = pool.map(functools.partial(adjustThresh, value = threshValue), emImages)
 	result2 = pool.map(contourAndErode, result)
 	print "length of result: " + str(len(result2))
@@ -136,6 +136,7 @@ def main():
 	threshImg = img
 	while(1):
 		try:
+			threshImg = cv2.resize(threshImg, (1900, 1200)) 
 			cv2.imshow('image', threshImg)
 		except:
 			print 'WARNING: cv2 did not read the image correctly'

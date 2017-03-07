@@ -10,8 +10,9 @@ from multiprocessing.dummy import Pool as ThreadPool
 import queue
 import threading
 import os
+import sys
 
-def calcMesh(label, labelStack):
+def calcMesh(label, labelStack, location):
 
 	indices = np.where(labelStack==label)
 	if len(indices[0]) < 5000:
@@ -20,7 +21,7 @@ def calcMesh(label, labelStack):
 	blankImg = np.zeros(labelStack.shape, dtype=np.uint8)
 	blankImg[indices] = 1
 	vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
-	with open("multimesh/" + str(label)+".obj", 'w') as f:
+	with open(location + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
 			f.write("v %.2f %.2f %.2f \n" % (v[0], v[1], v[2]))
@@ -30,19 +31,19 @@ def calcMesh(label, labelStack):
 			f.write("f %d %d %d \n" % (face[0]+1, face[1]+1, face[2]+1))
 
 # The worker thread pulls an item from the queue and processes it
-def worker(q, labelStack):
+def worker(q, labelStack, meshes):
 	while True:
 		item = q.get()
 		print('Processing job:', item)
-		calcMesh(item, labelStack)
+		calcMesh(item, labelStack, meshes)
 		q.task_done()
 
 def main():
 	q = queue.Queue()
+	meshes = sys.argv[2]
+	alreadyDone = glob.glob(meshes + "*")
 
-	alreadyDone = glob.glob("multimesh/*")
-
-	labelsFolderPath = "outMended/"
+	labelsFolderPath = sys.argv[1]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
@@ -57,7 +58,7 @@ def main():
 		q.put(label)
 
 	for i in range(7):
-		     t = threading.Thread(target=worker, args = (q, labelStack,))
+		     t = threading.Thread(target=worker, args = (q, labelStack, meshes, ))
 		     t.daemon = True  # thread dies when main thread (only non-daemon thread) exits.
 		     t.start()
 	q.join()

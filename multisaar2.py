@@ -166,7 +166,7 @@ def main():
 
 	print "Cleaning labels..."
 	pool = ThreadPool(NUMBERCORES)
-	cleanLabels(np.dsplit(labels, labels.shape[2])[0])
+	#cleanLabels(np.dsplit(labels, labels.shape[2])[0])
 
 	labels = np.dstack(pool.map(cleanLabels, np.dsplit(labels, labels.shape[2])))
 	labels = np.uint16(labels)

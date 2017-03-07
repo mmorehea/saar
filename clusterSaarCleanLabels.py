@@ -6,6 +6,7 @@ import glob
 import code
 import tifffile
 from timeit import default_timer as timer
+import ConfigParser
 
 from scipy import ndimage as nd
 
@@ -35,14 +36,14 @@ def findBBDimensions(listofpixels):
 
 
 def cleanLabels(img):
-	kernel = np.ones((14,14),np.uint8)
+	kernel = np.ones((3,3),np.uint8)
 	blankResult = np.zeros(img.shape, dtype=np.uint16)
 	uniqueLabels = np.unique(img)[1:]
-	for lab in uniqueLabels:
+	sizeLabels = len(uniqueLabels)
+	for ii,lab in enumerate(uniqueLabels):
+		#print str(ii) + " / " + str(sizeLabels)
 		indices = np.where(img==lab)
-		if (indices[0].size < 10):
-			#print "small label detected, skipping..."
-			continue
+
 		blob = zip(indices[0], indices[1])
 		box, dimensions = findBBDimensions(blob)
 
@@ -81,13 +82,19 @@ def transformBlob(blob, displacement):
 	return transformedBlob
 
 def main():
-	imagePath = sys.argv[1]
-		
-	
+	startMain = timer()
+	imageNum = sys.argv[2]
+	imagePath = 'labels/'
+	images = sorted(glob.glob(imagePath + '*'))
+	imagePath = images[int(imageNum)]
 	img = cv2.imread(imagePath, -1)
-	cleanImage = cleanLabels(img, threshVal)
+
+	cleanImage = cleanLabels(img)
 
 	tifffile.imsave('clean/' + str(os.path.basename(imagePath)), cleanImage)
+
+	endClean = timer() - startMain
+	print "time, clean, single: " + str(endClean)
 	
 
 if __name__ == "__main__":

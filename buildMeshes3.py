@@ -4,6 +4,7 @@ import tifffile
 import numpy as np
 import glob
 from numpy import load
+import sys
 
 def writeObj(filepath, vertices, normals, faces):
 	with open(filepath, 'w') as f:
@@ -17,7 +18,8 @@ def writeObj(filepath, vertices, normals, faces):
 
 
 def main():
-	labelsFolderPath = "outMended/"
+	labelsFolderPath = sys.argv[1]
+	meshes = sys.argv[2]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
@@ -32,11 +34,11 @@ def main():
 		indices = np.where(labelStack==each)
 		print(len(indices[0]))
 		#code.interact(local=locals())
-		#blankImg = np.zeros(labelStack.shape, dtype=np.uint8)
-		#blankImg[indices] = 1
+		blankImg = np.zeros(labelStack.shape, dtype=np.uint8)
+		blankImg[indices] = 1
 		
-		#vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
-		#writeObj('meshes/' + str(each) + '.obj', vertices, normals, faces)
+		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
+		writeObj(meshes + str(each) + '.obj', vertices, normals, faces)
 		
 	
 

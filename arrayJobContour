@@ -1,0 +1,9 @@
+#PBS -N saar_contour_${PBS_ARRAYID}
+#PBS -l nodes=1:ppn=1
+#PBS -t 0-1830
+#PBS -o /dev/null
+#PBS -e /dev/null
+
+cd $PBS_O_WORKDIR
+module load compilers/python/2.7.13
+python clusterSaarContour.py -input_parameter ${PBS_ARRAYID} -procs 1 -output_file thresh_output.txt

@@ -42,7 +42,7 @@ def contourAndErode(threshImg):
 	else:
 		contours, hierarchy = cv2.findContours(threshImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE )
 	cv2.drawContours(blank, contours, -1, (255,255,255), -1)
-	kernel = np.ones((2,2),np.uint8)
+	kernel = np.ones((10,10),np.uint8)
 	blank = cv2.morphologyEx(blank, cv2.MORPH_CLOSE, kernel)
 
 	blank = cv2.erode(blank, kernel, 1)

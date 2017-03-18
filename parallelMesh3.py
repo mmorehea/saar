@@ -42,8 +42,6 @@ def calcMesh(label, labelStack, location):
 	if len(indices[0]) < 5000:
 		print("Too small", str(len(indices[0])))
 		return
-	#print len(indices[0])
-
 	box, dimensions = findBBDimensions(indices)
 
 
@@ -53,7 +51,6 @@ def calcMesh(label, labelStack, location):
 	blankImg[localIndices] = 1
 
 	vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
-
 	with open(location + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
@@ -63,6 +60,13 @@ def calcMesh(label, labelStack, location):
 		for face in faces:
 			f.write("f %d %d %d \n" % (face[0]+1, face[1]+1, face[2]+1))
 
+# The worker thread pulls an item from the queue and processes it
+def worker(q, labelStack, meshes):
+	while True:
+		item = q.get()
+		print('Processing job:', item)
+		calcMesh(item, labelStack, meshes)
+		q.task_done()
 
 def main():
 	q = queue.Queue()
@@ -71,17 +75,29 @@ def main():
 
 	labelsFolderPath = sys.argv[1]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
-	#code.interact(local=locals())
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
 	print("Loaded data...")
 	labels = np.unique(labelStack)[1:]
 	print("Found labels...")
-	print("firstlabel: " + str(labels[0]))
-	print("Number of labels", str(len(labels)))
 
-	for each in labels:
-		calcMesh(each, labelStack, meshes)
+	#startIndex = np.where(labels == max([int(os.path.basename(x)[:-4]) for x in alreadyDone]))[0][0] + 1
+	print("Number of labels", str(len(labels)))
+	print("Number of labels", str(max(labels)))
+	for label in labels:
+		q.put(label)
+
+	for i in range(7):
+		     t = threading.Thread(target=worker, args = (q, labelStack, meshes, ))
+		     t.daemon = True  # thread dies when main thread (only non-daemon thread) exits.
+		     t.start()
+	q.join()
+
+
+
+
+
+
 
 
 if __name__ == "__main__":

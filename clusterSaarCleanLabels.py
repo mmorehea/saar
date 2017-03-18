@@ -37,7 +37,7 @@ def findBBDimensions(listofpixels):
 
 def cleanLabels(img):
 	kernel = np.ones((3,3),np.uint8)
-	blankResult = np.zeros(img.shape, dtype=np.uint16)
+	blankResult = np.zeros(img.shape, dtype=np.uint32)
 	uniqueLabels = np.unique(img)[1:]
 	sizeLabels = len(uniqueLabels)
 	for ii,lab in enumerate(uniqueLabels):
@@ -70,7 +70,7 @@ def cleanLabels(img):
 
 		finalBlob = transformBlob(localBlob, (box[0] + offset[0], box[2] + offset[2]))
 
-		blankResult[zip(*finalBlob)] = lab
+		blankResult[zip(*finalBlob)] = ii
 
 	return blankResult
 
@@ -84,18 +84,18 @@ def transformBlob(blob, displacement):
 def main():
 	startMain = timer()
 	imageNum = sys.argv[2]
-	imagePath = 'labels/'
-	images = sorted(glob.glob(imagePath + '*'))
+	imagePath = 'saarData/' # labels/
+	images = sorted(glob.glob(imagePath + '*.npy'))
 	imagePath = images[int(imageNum)]
-	img = cv2.imread(imagePath, -1)
+	img = np.load(imagePath)
 
 	cleanImage = cleanLabels(img)
 
-	tifffile.imsave('clean/' + str(os.path.basename(imagePath)), cleanImage)
+	tifffile.imsave('clean/' + str(os.path.basename(imagePath)[:-4]) + '.tif', cleanImage)
 
 	endClean = timer() - startMain
 	print "time, clean, single: " + str(endClean)
-	
+
 
 if __name__ == "__main__":
 	main()

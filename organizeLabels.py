@@ -1,10 +1,9 @@
-from marching_cubes import march
 import code
 import tifffile
 import numpy as np
 import glob
 from numpy import load
-
+import cPickle as pickle
 import multiprocessing
 from multiprocessing.dummy import Pool as ThreadPool
 import queue
@@ -12,9 +11,8 @@ import threading
 import os
 import sys
 
-SCALEX = 10.0
-SCALEY = 10.0
-SCALEZ = 1.0
+SCALEX = 5.0
+SCALEY = 5.0
 
 def findBBDimensions(listOfPixels):
 	xs = listOfPixels[0]
@@ -30,11 +28,21 @@ def findBBDimensions(listOfPixels):
 	minzs = min(zs)
 	maxzs = max(zs)
 
-	dx = maxxs - minxs
-	dy = maxys - minys
-	dz = maxzs - minzs
+	dx = maxxs+1 - minxs
+	dy = maxys+1 - minys
+	dz = maxzs+1 - minzs
 
 	return [minxs, maxxs+1, minys, maxys+1, minzs, maxzs+1], [dx, dy, dz]
+
+def transformCoords(labelPoints, boundingBox, direction):
+# for 'direction' argument, +1 is local to global, and -1 is global to local
+	dx = boundingBox[0]
+	dy = boundingBox[2]
+	dz = boundingBox[4]
+
+	labelPoints = (np.array([x+direction*dx for x in labelPoints[0]]), np.array([y+direction*dy for y in labelPoints[1]]), np.array([z+direction*dz for z in labelPoints[2]]))
+
+	return labelPoints, np.array([dx, dy, dz])
 
 def calcMesh(label, labelStack, location):
 
@@ -57,7 +65,7 @@ def calcMesh(label, labelStack, location):
 	with open(location + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
-			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX), (box[2] * SCALEY) + (v[1] * SCALEY), (box[3] * SCALEZ) + v[0] * 5.454545))
+			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX), (box[2] * SCALEY) + (v[1] * SCALEY), v[0] * 5.454545))
 		for n in normals:
 			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
 		for face in faces:
@@ -66,22 +74,37 @@ def calcMesh(label, labelStack, location):
 
 def main():
 	q = queue.Queue()
-	meshes = sys.argv[2]
-	alreadyDone = glob.glob(meshes + "*")
+	# meshes = sys.argv[2]
+	# alreadyDone = glob.glob(meshes + "*")
 
 	labelsFolderPath = sys.argv[1]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
-	#code.interact(local=locals())
+
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
 	print("Loaded data...")
 	labels = np.unique(labelStack)[1:]
 	print("Found labels...")
 	print("firstlabel: " + str(labels[0]))
-	print("Number of labels", str(len(labels)))
 
-	for each in labels:
-		calcMesh(each, labelStack, meshes)
+	for i, label in enumerate(labels):
+		labelPoints = np.where(labelStack==label)
+		box, dimensions = findBBDimensions(labelPoints)
+
+		localLabelPoints, globalCoords = transformCoords(labelPoints, box, -1)
+
+		try:
+			labelArray = np.zeros((dimensions[0], dimensions[1], dimensions[2]), dtype=bool)
+			labelArray[localLabelPoints] = 1
+		except: code.interact(local=locals())
+
+		if not os.path.exists('labelData/'):
+			os.mkdir('labelData')
+		if not os.path.exists('labelData/' + str(i) + '/'):
+			os.mkdir('labelData/' + str(i) + '/')
+
+		np.save('labelData/' + str(i) + '/array.npy', labelArray)
+		np.save('labelData/' + str(i) + '/globalCoords.npy', globalCoords)
 
 
 if __name__ == "__main__":

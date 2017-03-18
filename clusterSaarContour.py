@@ -16,6 +16,8 @@ try:
 except ImportError:
     from skimage import filter as filters
 
+
+
 def contourAndErode(threshImg):
 	blank = np.zeros(threshImg.shape)
 
@@ -30,6 +32,9 @@ def contourAndErode(threshImg):
 	return blank
 
 def main():
+	cfgfile = open("saar.ini",'r')
+	config = ConfigParser.ConfigParser()
+	config.read('saar.ini')
 	startMain = timer()
 	imageNum = sys.argv[2]
 	imagePath = 'thresh/'
@@ -37,9 +42,9 @@ def main():
 	imagePath = images[int(imageNum)]
 	img = cv2.imread(imagePath, -1)
 	contourImage = np.uint8(contourAndErode(img))
-	
+
 	tifffile.imsave('contour/' + str(os.path.basename(imagePath)), contourImage)
-	
+
 	endClean = timer() - startMain
 	print "time, contour, single: " + str(endClean)
 if __name__ == "__main__":

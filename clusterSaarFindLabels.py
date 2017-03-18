@@ -19,21 +19,27 @@ except ImportError:
 
 def main():
 	startMain = timer()
-	threshPath = sys.argv[1]
-	threshPaths = sorted(glob.glob(threshPath +'*'))
-	
+	threshPaths = sorted(glob.glob('cleaned/*.tif*'))
+
 	emImages = [cv2.imread(threshPaths[z], -1) for z in xrange(len(threshPaths))]
-	blank = np.dstack(emImages)
-	
-	labels = nd.measurements.label(blank)
-	labels = np.uint16(labels[0])
-	
-	for each in xrange(labels.shape[2]):
+	print("loaded")
+	emImages = np.dstack(emImages)
+	print("stacked")
+
+	emImages, number = nd.measurements.label(emImages)
+	print number
+	print("labels")
+
+	emImages = np.uint32(emImages)
+
+
+	for each in range(emImages.shape[2]):
 		print each
-		img = labels[:,:,each]
-		tifffile.imsave('labels/' + str(each).zfill(4) + '.tif', img)
-	endClean = timer() - startMain
-	print "time, labels, single: " + str(endClean)
+		img = emImages[:,:,each]
+		tifffile.imsave('cleanedLabels32/' + str(os.path.basename(threshPaths[each])), img)
+
+
+
 
 
 

@@ -37,7 +37,7 @@ def main():
 		blankImg = np.zeros(labelStack.shape, dtype=np.uint8)
 		blankImg[indices] = 1
 		
-		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
+		vertices, normals, faces = march(blankImg, 1)  # zero smoothing rounds
 		writeObj(meshes + str(each) + '.obj', vertices, normals, faces)
 		
 	

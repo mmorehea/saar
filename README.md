@@ -10,6 +10,7 @@ Takes the labels and creates .obj files for each one. multiMesh3.py is more up t
 
 ## cleanLabels.py
 **inputs**: uncleaned labels
+
 **outputs**: cleaned labels in the folder "clean/"
 Single threaded version of cleaning algorithm, copies each label onto its own blank array to dilate and erode it, then returns to main array.
 

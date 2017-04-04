@@ -1,4 +1,26 @@
-### saar
+###### saar
+
+##### To Do:
+- find the meshable labels before the end of the pipeline, remember them, and make meshes for only those.
+- superimpose the labels with their colors over the EM for easier proofreading.
+
+##### The Pipeline
+
+#### 1. GUI that shows the user the top image in the original EM stack and allows him/her to set the thresholding and contouring parameters that will be applied to the entire stack.
+
+## getParamaters.py
+**inputs**: original EM image stack, user input  
+**outputs**: config file  
+Allows the user to set up the thresholding and contouring parameters using a GUI that displays the top image of the stack, and saves the parameters to a config file.
+
+## getThreshold.py, mass.py
+Outdated scripts that together make up the old version of getParameters.py.
+
+#### 2. Generate the labels using the appropriate threshold and contour parameters.
+
+#### 3. Make meshes from the labels.
+
+##### Other Stuff
 
 ## arrayJobCleanLabels, arrayJobContour,arrayJobThreshold
 Not sure what these are for, don't appear to be part of the main pipeline
@@ -45,14 +67,6 @@ Extracts a list of labels from the stack.
 **inputs**: two paths to different folders  
 **outputs**: a list of items present in one folder but not the other  
 Determines which items in one folder are missing from another, and returns a list of these items.
-
-## getParamaters.py
-**inputs**: original EM image stack, user input  
-**outputs**: config file  
-Allows the user to set up the thresholding and contouring parameters using a GUIthat displays the top image of the stack, and saves the parameters to a config file.
-
-## getThreshold.py, mass.py
-Old, outdated version of getParameters.py.
 
 ## installcv3.sh
 bash script for installing cv3.

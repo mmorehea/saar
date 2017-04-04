@@ -20,16 +20,16 @@ def main():
 	labelList = [34221,48784,41281,89215,62078,88538,74564,29411,66598,90149,37062,41570,46280,79622,56732,66891,91509,80561,61940,82571,91968,85449,90470,69924]
 	ids = np.unique(images)
 	for each in ids:
-		if each not in labelList:
+		if each in labelList:
 			indices = np.where(images == each)
-			blank[indices] = each
+			images[indices] = 0
 		
-	blank = np.uint32(blank)
-	
-	for each in xrange(blank.shape[2]):
+	images = np.uint32(images)	
+
+	for each in xrange(images.shape[2]):
 		print each
-		img = blank[:,:,each]
-		tifffile.imsave('extractedLabels/' + str(each).zfill(4) + '.tif', img)
+		img = images[:,:,each]
+		tifffile.imsave('extractedLabels1/' + str(each).zfill(4) + '.tif', img)
 	endClean = timer() - startMain
 	print "time, labels, single: " + str(endClean)
 

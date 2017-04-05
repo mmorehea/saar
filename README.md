@@ -8,12 +8,12 @@
 
 ### 1. GUI that shows the user the top image in the original EM stack and allows him/her to set the thresholding and contouring parameters that will be applied to the entire stack.
 
-#### getParamaters.py
+- #### getParamaters.py
 **inputs**: original EM image stack, user input  
 **outputs**: config file  
 Allows the user to set up the thresholding and contouring parameters using a GUI that displays the top image of the stack, and saves the parameters to a config file.
 
-#### getThreshold.py, mass.py
+- #### getThreshold.py, mass.py
 Outdated scripts that together make up the old version of getParameters.py.
 
 ### 2. Generate the labels using the appropriate threshold and contour parameters.

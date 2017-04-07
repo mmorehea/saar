@@ -32,6 +32,7 @@ def adjustThresh(originalImg, value):
 def noiseVis(threshImg, ks):
 	kernelImg = cv2.morphologyEx(threshImg, cv2.MORPH_OPEN, np.ones((ks,ks)))
 	ret,kernelImg = cv2.threshold(kernelImg, 0, 255, cv2.THRESH_BINARY)
+	kernelImg = cv2.erode(kernelImg, (ks,ks), iterations = 6)
 
 	return kernelImg
 
@@ -51,8 +52,9 @@ def main():
 
 
 	startMain = timer()
-	imageNum = sys.argv[2]
-	inputPath = "emMended/"
+	inputPath = sys.argv[1]
+	outDir = sys.argv[2]
+
 	images = sorted(glob.glob(inputPath + '*'))
 	for each in range(len(images)):
 		print each
@@ -63,7 +65,7 @@ def main():
 
 		noiseRemove = noiseVis(threshAndFill, p)
 
-		tifffile.imsave('cleaned/' + str(os.path.basename(imagePath)), noiseRemove)
+		tifffile.imsave(outDir + str(os.path.basename(imagePath)), noiseRemove)
 
 	endClean = timer() - startMain
 	print "time, mass, single: " + str(endClean)

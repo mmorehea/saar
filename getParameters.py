@@ -99,6 +99,7 @@ def noiseVis(threshImg):
 			oldKernel = ks
 			kernelImg = cv2.morphologyEx(threshImg, cv2.MORPH_OPEN, np.ones((ks,ks)))
 			ret,kernelImg = cv2.threshold(kernelImg, 0, 255, cv2.THRESH_BINARY)
+			kernelImg = cv2.erode(kernelImg, (ks,ks), 6)
 
 	cv2.destroyAllWindows()
 	return oldKernel, kernelImg

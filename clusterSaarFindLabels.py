@@ -81,7 +81,7 @@ def refineLabels(array, emImages):
 				fewLabels, blankArray[cInd[0], cind[1], z] = generateNewLabel(fewLabels)
 
 		newLabels = pathHunter(blankArray)
-		
+
 		# topImg = arr[:,:,z]
 		# bottomImg = arr[:,:,z+1]
 		# for contour in cotours
@@ -100,51 +100,35 @@ def main():
 	outDir = sys.argv[2]
 
 	startMain = timer()
-	threshPaths = sorted(glob.glob('cleaned/*.tif*'))
+	threshPaths = sorted(glob.glob(inputPath +'*.tif*'))
 
-	threshPaths = sorted(glob.glob(inputPath + '*'))
-	emPaths = sorted(glob.glob('emMended/*'))
-	# testPaths = sorted(glob.glob('outfinal3/*'))
-
-	threshImages = [cv2.imread(threshPaths[z], -1) for z in xrange(len(threshPaths))]
-	emImages = [cv2.imread(emPaths[z], -1) for z in xrange(len(emPaths))]
-	# testImages = [tifffile.imread(testPaths[z]).astype(np.uint8) for z in xrange(len(testPaths))]
-
-
+	emImages = [cv2.imread(threshPaths[z], -1) for z in xrange(len(threshPaths))]
 	print("loaded")
-	threshImages = np.dstack(threshImages)
 	emImages = np.dstack(emImages)
 	print("stacked")
 
-	labeledImages, number = nd.measurements.label(threshImages)
-	print number
-	print("labels")
 
-	labeledImages = np.uint32(labeledImages)
+	#subStack = emImages[:, :, ii*100:(ii+1)*100]			
+	
+	#shape = [[[0,0,0], [0,1,0], [0,0,0]], [[0,1,0], [1,1,1], [0,1,0]], [[0,0,0], [0,1,0], [0,0,0]]]
+	label_img, number = nd.measurements.label(emImages)
+	#CC = nd.find_objects(label_img)
+	#cc_areas = nd.sum(Map, label_img, range(cc_num+1))
+	#area_mask = (cc_areas < 1500)
+	#label_img[area_mask[label_img]] = 0
 
-	# for each in range(len(emImages)):
-	# 	blankImg = np.zeros(emImages[0].shape).astype(np.uint8)
-	#
-	# 	testImg = testImages[each]
-	# 	emImg = emImages[each]
-	# 	coords = np.where(testImg==25)
-	# 	blankImg[coords] = emImg[coords]
-	# 	tifffile.imsave('problemEM2/' + str(os.path.basename(testPaths[each])), blankImg)
-	#
-	# labeledImages = refineLabels(labeledImages, emImages)
-	# print("refined")
+	
 
+
+	emImages = np.uint32(label_img)
+
+	#s = np.where(emImages == 28)
+	#emImages[s] = 255
 
 	for each in range(emImages.shape[2]):
 		print each
-		img = labeledImages[:,:,each].astype(np.uint8)
-
-		# for label in np.unique(img):
-
+		img = emImages[:,:,each]
 		tifffile.imsave(outDir + str(os.path.basename(threshPaths[each])), img)
-
-
-
 
 
 

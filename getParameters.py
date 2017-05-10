@@ -71,6 +71,7 @@ def noiseVis(threshImg):
 	threshImg = np.uint8(threshImg)
 
 	kernelImg = np.uint8(threshImg)
+	cv2.createTrackbar('Kernel Size for Noise Removal', 'image', 1, 10, nothing)
 	while(1):
 		k = cv2.waitKey(1)
 		if k == 32:
@@ -80,17 +81,11 @@ def noiseVis(threshImg):
 			cv2.imshow('image', kernelImg)
 		except:
 			print 'WARNING: cv2 did not read the image correctly'
-		if k == 112:
-			ks += 1
-		if k == 111:
-			ks -= 1
-		if k == 113:
-			cv2.destroyAllWindows()
-			sys.exit(0)
+		ks = cv2.getTrackbarPos('Kernel Size for Noise Removal', 'image')
 		# get current positions of four trackbars
 
 		if (ks != oldKernel):
-			print ks
+			# print ks
 			oldKernel = ks
 			kernelImg = cv2.morphologyEx(threshImg, cv2.MORPH_OPEN, np.ones((ks,ks)))
 			ret,kernelImg = cv2.threshold(kernelImg, 0, 255, cv2.THRESH_BINARY)
@@ -144,8 +139,8 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 		upperThresh = orderedAreas[int((float(higherPercentile)/100) * len(orderedAreas))]
 	else:
 		upperThresh = orderedAreas[-1]
-	# print lowerThresh
-	# print len(indices)
+	print lowerThresh
+	print len(indices)
 	# print len(orderedAreas)
 	# print len(objs)
 	# print img.shape

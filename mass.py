@@ -103,7 +103,7 @@ def main():
 
 		outImg = adjustThresh(img, threshVal)
 
-		# outImg = noiseVis(outImg,p)
+		outImg = noiseVis(outImg,p)
 
 		outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal)
 

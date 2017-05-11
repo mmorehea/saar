@@ -11,6 +11,7 @@ import queue
 import threading
 import os
 import sys
+import pickle
 
 SCALEX = 10.0
 SCALEY = 10.0
@@ -39,11 +40,6 @@ def findBBDimensions(listOfPixels):
 def calcMesh(label, labelStack, location):
 
 	indices = np.where(labelStack==label)
-	if len(indices[0]) < 5000:
-		print("Too small", str(len(indices[0])))
-		return
-	#print len(indices[0])
-
 	box, dimensions = findBBDimensions(indices)
 
 
@@ -67,7 +63,9 @@ def calcMesh(label, labelStack, location):
 def main():
 	q = queue.Queue()
 	meshes = sys.argv[2]
-	alreadyDone = glob.glob(meshes + "*")
+	alreadyDone = glob.glob(meshes + "*.obj")
+	alreadyDone = [i.split("\\")[1][:-4] for i in alreadyDone]
+	print(alreadyDone)
 
 	labelsFolderPath = sys.argv[1]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
@@ -75,12 +73,17 @@ def main():
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
 	print("Loaded data...")
-	labels = np.unique(labelStack)[1:]
+	with open ('outfile', 'rb') as fp:
+		itemlist = pickle.load(fp)
+	itemlist = itemlist[1:]
 	print("Found labels...")
-	print("firstlabel: " + str(labels[0]))
-	print("Number of labels", str(len(labels)))
+	print("firstlabel: " + str(itemlist[0]))
+	print("Number of labels", str(len(itemlist)))
 
-	for each in labels:
+	for each in itemlist:
+		if each in alreadyDone:
+			continue
+		print(each)
 		calcMesh(each, labelStack, meshes)
 
 

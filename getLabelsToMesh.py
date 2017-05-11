@@ -1,10 +1,10 @@
-from marching_cubes import march
 import code
 import tifffile
 import numpy as np
 import glob
 from numpy import load
 import sys
+import pickle
 
 def main():
 	labelsFolderPath = sys.argv[1]
@@ -28,7 +28,17 @@ def main():
 			else:
 				mapEnd[label] = ii
 		#code.interact(local=locals())
-	code.interact(local=locals())
+	
+	listOfGoodLabels = []
+	for label in mapBegin:
+		if label in mapEnd:
+			if mapEnd[label] - mapBegin[label] > 100:
+				listOfGoodLabels.append(label)
+	
+
+	with open('goodLabels.pickle', 'wb') as fp:
+		pickle.dump(listOfGoodLabels, fp)	
+				
 		
 	
 

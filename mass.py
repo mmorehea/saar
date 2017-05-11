@@ -15,6 +15,7 @@ try:
     from skimage import filters
 except ImportError:
     from skimage import filter as filters
+from itertools import cycle
 
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
@@ -25,7 +26,66 @@ def adjustThresh(originalImg, value):
 	thresh1 = cv2.erode(thresh1, kernel, 1)
 	return thresh1
 
-# def getSizeRange(img, lowerPercentile, higherPercentile):
+def findCentroid(listofpixels):
+	if len(listofpixels) == 0:
+		return (0,0)
+	rows = [p[0] for p in listofpixels]
+	cols = [p[1] for p in listofpixels]
+	try:
+		centroid = int(round(np.mean(rows))), int(round(np.mean(cols)))
+	except:
+		print 'error'
+		code.interact(local=locals())
+		centroid = (0,0)
+	return centroid
+
+# Outdated function, prob do not need
+def findNearestNeighbors(img, startPoint, oglabel):
+	directions = cycle([[0,1], [0.5, 1], [1,1], [1,0.5], [1,0], [1,-0.5], [1,-1], [0.5,-1], [0,-1], [-0.5,-1], [-1,-1], [-1,-0.5], [-1,0], [-1,0.5], [-1,1], [-0.5,1]])
+	increment = 0
+	cycleCounter = 0
+	distance = [0,0]
+	neighbors = []
+
+	while True:
+		direction = directions.next()
+
+		for i in [0,1]:
+			if direction[i] > 0:
+				distance[i] = direction[i] + increment
+			elif direction[i] < 0:
+				distance[i] = direction[i] - increment
+			else:
+				distance[i] = direction[i]
+
+		checkPoint = [startPoint[0] + distance[0],startPoint[1] + distance[1]]
+
+		if checkPoint[0] < 0:
+			checkPoint[0] = 0
+		elif checkPoint[0] > img.shape[0]-1:
+			checkPoint[0] = img.shape[0]-1
+		if checkPoint[1] < 0:
+			checkPoint[1] = 0
+		elif checkPoint[1] > img.shape[1]-1:
+			checkPoint[1] = img.shape[1]-1
+
+		checkPoint = tuple(checkPoint)
+
+		# if increment == 19: code.interact(local=locals())
+
+		cycleCounter += 1
+		if cycleCounter % 8 == 0:
+			increment += 1
+
+		# print cycleCounter
+
+		if img[checkPoint] > 0 and img[checkPoint] != oglabel and img[checkPoint] not in neighbors:
+			neighbors.append(img[checkPoint])
+
+		if increment > 25:
+			break
+
+	return neighbors
 
 def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	label_img, cc_num = nd.label(img)
@@ -43,7 +103,45 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 		upperThresh = orderedAreas[-1]
 
 	area_mask = (areas < lowerThresh)
+	area_mask[0] = False
+
+	# testing section
+	# r=20
+	# b = np.where(label_img==211)
+	# testblob = zip(b[0],b[1])
+	# centroid = findCentroid(testblob)
+	# y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
+	# mask = x*x + y*y <= r*r
+	# neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[zip(*testblob)][0]]
+	# z = np.zeros(area_mask.shape, dtype=bool)
+	# for l in neighborLabels:
+	# 	z[l] = True
+	# label_img[z[label_img]] = 99999
+	# cv2.imshow('a',label_img)
+	# cv2.waitKey()
+	# code.interact(local=locals())
+
+	# Remove small axons within bundles from the area mask
+	r = 20 # minimum distance for a blob to be considered a neighbor
+	for i, value in enumerate(area_mask):
+		if value == True:
+			a = np.where(label_img==i)
+			label = zip(a[0],a[1])
+
+
+			centroid = findCentroid(label)
+
+			y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
+			mask = x*x + y*y <= r*r
+
+			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[zip(*label)][0]]
+			# neighborLabels = findNearestNeighbors(label_img, centroid, label_img[zip(*label)][0])
+
+			if len(neighborLabels) > 5:
+				area_mask[i] = False
+
 	label_img[area_mask[label_img]] = 0
+
 
 	area_mask = (areas > upperThresh)
 	label_img[area_mask[label_img]] = 0

@@ -24,16 +24,15 @@ def main():
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
 	#code.interact(local=locals())
-	labels = np.unique(labelStack)[1:]
-	
-	#code.interact(local=locals())
+	print("stacked")
+	with open ('outfile', 'rb') as fp:
+		itemlist = pickle.load(fp)
 	count = 0
-	for each in labels:
+	for each in itemlist:
 		print(count)
 		count += 1
 		indices = np.where(labelStack==each)
-		print(len(indices[0]))
-		#code.interact(local=locals())
+
 		blankImg = np.zeros(labelStack.shape, dtype=np.uint8)
 		blankImg[indices] = 1
 		

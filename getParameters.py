@@ -220,6 +220,7 @@ def main():
 			oldThresh, threshImg = threshVis(img)
 		elif choice=='2':
 			noiseKernel, threshImg = noiseVis(threshImg)
+			tifffile.imsave('junk/test.tif', threshImg)
 		elif choice=='3':
 			sizeRange, threshImg = sizeVis(threshImg)
 		elif choice=='4':

@@ -1,5 +1,14 @@
 # saar
 
+## Pipeline
+
+- Run getParameters.py to allow user to set intensity threshold, kernel for noise removal, and size threshold
+- Run mass.py to apply these parameters to the entire stack and create initial mask
+- Run clusterSaarFindLabels.py to do connected components and create the individual labels
+- Run makeItemList.py to create a list for mesh creation that excludes labels that are too small
+- Run multiMesh3.py to create the meshes 
+
+# Old readme:
 ## To Do
 - find the meshable labels before the end of the pipeline, remember them, and make meshes for only those.
 - superimpose the labels with their colors over the EM for easier proofreading.

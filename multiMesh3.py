@@ -1,3 +1,5 @@
+from __future__ import division
+import sys
 from marching_cubes import march
 import code
 import tifffile
@@ -10,12 +12,17 @@ from multiprocessing.dummy import Pool as ThreadPool
 import queue
 import threading
 import os
-import sys
 import pickle
+
+NUMBERCORES = multiprocessing.cpu_count()
+print("Found " + str(NUMBERCORES) + " number of cores. Using 2.")
+NUMBERCORES = 2
 
 SCALEX = 10.0
 SCALEY = 10.0
 SCALEZ = 1.0
+labelStack = []
+meshes = []
 
 def findBBDimensions(listOfPixels):
 	xs = listOfPixels[0]
@@ -35,9 +42,9 @@ def findBBDimensions(listOfPixels):
 	dy = maxys - minys
 	dz = maxzs - minzs
 
-	return [minxs, maxxs+1, minys, maxys+1, minzs, maxzs+1], [dx, dy, dz]
+	return [minxs-2, maxxs+2, minys-2, maxys+2, minzs-2, maxzs+2], [dx, dy, dz]
 
-def calcMesh(label, labelStack, location):
+def calcMesh(label):
 
 	indices = np.where(labelStack==label)
 	box, dimensions = findBBDimensions(indices)
@@ -50,10 +57,10 @@ def calcMesh(label, labelStack, location):
 
 	vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
 
-	with open(location + str(label)+".obj", 'w') as f:
+	with open(meshes + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
-			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX), (box[2] * SCALEY) + (v[1] * SCALEY), (box[3] * SCALEZ) + v[0] * 5.454545))
+			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX), (box[2] * SCALEY) + (v[1] * SCALEY), (box[4] * SCALEZ) + v[0]))
 		for n in normals:
 			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
 		for face in faces:
@@ -62,29 +69,38 @@ def calcMesh(label, labelStack, location):
 
 def main():
 	q = queue.Queue()
+	global meshes
 	meshes = sys.argv[2]
+
 	alreadyDone = glob.glob(meshes + "*.obj")
-	alreadyDone = [i.split("\\")[1][:-4] for i in alreadyDone]
+
+	alreadyDone = [i.split("\\") for i in alreadyDone]
 	print(alreadyDone)
 
 	labelsFolderPath = sys.argv[1]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
 	#code.interact(local=locals())
+	global labelStack
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
+
 	print("Loaded data...")
 	with open ('outfile', 'rb') as fp:
 		itemlist = pickle.load(fp)
-	itemlist = itemlist[1:]
+		itemlist = itemlist[1:]
+
+	# itemlist = np.unique(labelStack)[1:]
+
 	print("Found labels...")
 	print("firstlabel: " + str(itemlist[0]))
 	print("Number of labels", str(len(itemlist)))
 
-	for each in itemlist:
-		if each in alreadyDone:
-			continue
-		print(each)
-		calcMesh(each, labelStack, meshes)
+	pool = ThreadPool(NUMBERCORES)
+
+	itemlist = [itm for itm in itemlist if itm not in alreadyDone]
+
+	for i, _ in enumerate(pool.imap_unordered(calcMesh, itemlist), 1):
+		sys.stderr.write('\rdone {0:%}'.format(i/len(itemlist)))
 
 
 if __name__ == "__main__":

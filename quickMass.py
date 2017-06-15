@@ -19,18 +19,6 @@ except ImportError:
     from skimage import filter as filters
 from itertools import cycle
 
-import multiprocessing
-from multiprocessing.dummy import Pool as ThreadPool
-
-NUMBERCORES = multiprocessing.cpu_count()
-print "Found " + str(NUMBERCORES) + " number of cores. Using " + str(NUMBERCORES - 1) + "."
-NUMBERCORES -= 1
-
-threshVal = 0
-p = 0
-lowerSizeVal = 0
-upperSizeVal = 0
-outDir = ''
 
 def adjustThresh(originalImg, value):
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
@@ -120,42 +108,6 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	area_mask = (areas < lowerThresh)
 	area_mask[0] = False
 
-	# testing section
-	# r=20
-	# b = np.where(label_img==211)
-	# testblob = zip(b[0],b[1])
-	# centroid = findCentroid(testblob)
-	# y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
-	# mask = x*x + y*y <= r*r
-	# neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[zip(*testblob)][0]]
-	# z = np.zeros(area_mask.shape, dtype=bool)
-	# for l in neighborLabels:
-	# 	z[l] = True
-	# label_img[z[label_img]] = 99999
-	# cv2.imshow('a',label_img)
-	# cv2.waitKey()
-	# code.interact(local=locals())
-
-	# Remove small axons within bundles from the area mask
-	r = 20 # minimum distance for a blob to be considered a neighbor
-	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
-	for i, value in enumerate(area_mask):
-		if value == True:
-			a = np.where(label_img==i)
-			label = zip(a[0],a[1])
-
-
-			centroid = findCentroid(label)
-
-			y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
-			mask = x*x + y*y <= r*r
-
-			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[zip(*label)][0]]
-			# neighborLabels = findNearestNeighbors(label_img, centroid, label_img[zip(*label)][0])
-
-			if len(neighborLabels) > minNeighborCount:
-				area_mask[i] = False
-
 	label_img[area_mask[label_img]] = 0
 
 
@@ -182,58 +134,54 @@ def noiseVis(threshImg, ks):
 
 	return kernelImg
 
-def processSlice(imgPath):
-	img = cv2.imread(imgPath, -1)
-	img = np.uint8(img)
-
-	outImg = adjustThresh(img, threshVal)
-
-	outImg = noiseVis(outImg, p)
-
-	outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal)
-
-	tifffile.imsave(outDir + str(os.path.basename(imgPath)), outImg)
-
-	return outImg
-
 def main():
 	cfgfile = open("saar.ini",'r')
 	config = ConfigParser.ConfigParser()
 	config.read('saar.ini')
 
 	try:
-		global threshVal
 		threshVal = int(config.get('Options', 'Threshold Value'))
+		global threshVal
 	except:
 		print "threshVal not found in config file, did you run getParameters.py?"
 	try:
-		global p
 		p = int(config.get('Options', 'Remove Noise Kernel Size'))
+		global p
 	except:
 		print "kernel value not found in config file, did you run getThreshold.py?"
 	try:
-		global lowerSizeVal
 		lowerSizeVal = int(config.get('Options', 'Filter Size Lower Bound'))
-		global upperSizeVal
+		global lowerSizeVal
 		upperSizeVal = int(config.get('Options', 'Filter Size Upper Bound'))
+		global upperSizeVal
 	except:
 		print "size values not found in config file, did you run getParameters.py?"
 
 
 	startMain = timer()
 	inputPath = sys.argv[1]
-	global outDir
 	outDir = sys.argv[2]
+	global outDir
 
 	images = sorted(glob.glob(inputPath + '*.tif*'))
 	print len(images)
 
-	pool = ThreadPool(NUMBERCORES)
+	for each in range(len(images)):
 
-	for i, _ in enumerate(pool.imap_unordered(processSlice, images), 1):
-	    sys.stderr.write('\rdone {0:%}'.format(i/len(images)))
 
-	# processedStack = pool.map(processSlice, images)
+		imagePath = images[int(each)]
+		img = cv2.imread(imagePath, -1)
+		img = np.uint8(img)
+
+		outImg = adjustThresh(img, threshVal)
+
+		outImg = noiseVis(outImg,p)
+
+		outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal)
+
+		tifffile.imsave(outDir + str(os.path.basename(imagePath)), outImg)
+		print each
+
 
 	endClean = timer() - startMain
 	print "time, mass, single: " + str(endClean)

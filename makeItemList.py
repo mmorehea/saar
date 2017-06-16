@@ -9,7 +9,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 from timeit import default_timer as timer
 import threading
 import os
-import pickle
+import cPickle as pickle
 import math
 
 def findBBDimensions(listOfPixels):
@@ -68,14 +68,14 @@ def trackSize(labelStack, axis, start):
 def main():
 	start = timer()
 	labelsFolderPath = sys.argv[1]
-	code.interact(local=locals())
-	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
+	
+	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
-	code.interact(local=locals())
+	
 	labelStack = np.dstack(labelStack)
 	end = timer()
  	print("Loaded data... time: " + str(end-start))
-	code.interact(local=locals())
+	
 	print("X Direction...")
 	finalListX = trackSize(labelStack, 0, start)
 	print("Y Direction...")
@@ -86,8 +86,7 @@ def main():
 	finalList = list(set(finalListX) | set(finalListY) | set(finalListZ))
 	print(end-start)
 
-	code.interact(local=locals())
-	pickle.dump(finalList, open('outfile.p', 'wb'))
+	np.save('outfile.npy', finalList)
 
 if __name__ == "__main__":
 	main()

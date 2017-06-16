@@ -78,7 +78,7 @@ def main():
 	print(alreadyDone)
 
 	labelsFolderPath = sys.argv[1]
-	labelsPaths = sorted(glob.glob(labelsFolderPath +'*'))
+	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
 	#code.interact(local=locals())
 	global labelStack
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]

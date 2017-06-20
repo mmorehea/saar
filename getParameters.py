@@ -125,6 +125,67 @@ def sizeVis(img):
 	cv2.destroyAllWindows()
 	return sizeRange, threshImg
 
+def findCentroid(listofpixels):
+	if len(listofpixels) == 0:
+		return (0,0)
+	rows = [p[0] for p in listofpixels]
+	cols = [p[1] for p in listofpixels]
+	try:
+		centroid = int(round(np.mean(rows))), int(round(np.mean(cols)))
+	except:
+		print 'error'
+		code.interact(local=locals())
+		centroid = (0,0)
+	return centroid
+
+# def adjustSizeFilter(img, lowerPercentile, higherPercentile):
+# 	label_img, cc_num = nd.label(img)
+# 	objs = nd.find_objects(label_img)
+# 	areas = nd.sum(img, label_img, range(cc_num+1))
+#
+# 	indices = sorted(range(len(areas)), key = lambda k: areas[k])
+#
+# 	orderedAreas = [areas[ind] for ind in indices]
+#
+# 	lowerThresh = orderedAreas[int((float(lowerPercentile)/100) * len(orderedAreas))]
+# 	if higherPercentile != 100:
+# 		upperThresh = orderedAreas[int((float(higherPercentile)/100) * len(orderedAreas))]
+# 	else:
+# 		upperThresh = orderedAreas[-1]
+#
+# 	area_mask = (areas < lowerThresh)
+# 	area_mask[0] = False
+#
+# 	# Remove small axons within bundles from the area mask
+# 	r = 20 # minimum distance for a blob to be considered a neighbor
+# 	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
+# 	for i, value in enumerate(area_mask):
+# 		if value == True:
+# 			a = np.where(label_img==i)
+# 			label = zip(a[0],a[1])
+#
+#
+# 			centroid = findCentroid(label)
+#
+# 			y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
+# 			mask = x*x + y*y <= r*r
+#
+# 			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[zip(*label)][0]]
+#
+# 			if len(neighborLabels) > minNeighborCount:
+# 				area_mask[i] = False
+#
+# 	label_img[area_mask[label_img]] = 0
+#
+#
+# 	area_mask = (areas > upperThresh)
+# 	label_img[area_mask[label_img]] = 0
+#
+# 	# print np.ndarray.dtype(label_img)
+# 	label_img[np.where(label_img > 0)] = 2**16
+#
+# 	return label_img
+
 def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	label_img, cc_num = nd.label(img)
 	objs = nd.find_objects(label_img)
@@ -139,11 +200,6 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 		upperThresh = orderedAreas[int((float(higherPercentile)/100) * len(orderedAreas))]
 	else:
 		upperThresh = orderedAreas[-1]
-	print lowerThresh
-	print len(indices)
-	# print len(orderedAreas)
-	# print len(objs)
-	# print img.shape
 
 	area_mask = (areas < lowerThresh)
 	label_img[area_mask[label_img]] = 0

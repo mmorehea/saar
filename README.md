@@ -2,8 +2,8 @@
 
 ## Pipeline
 
-- Run getParameters.py to allow user to set intensity threshold, kernel for noise removal, and size threshold
-- Run mass.py to apply these parameters to the entire stack and create initial mask
+- Run getParameters.py to allow user to set intensity threshold, kernel for noise removal, and size threshold. Note than when increasing the lower size threshold, small axons within bundles will disappear in the UI but they will not in the final product; this is just to make the UI faster and easier to use.
+- Run mass.py to apply these parameters to the entire stack and create initial mask (takes about 2.5 hours for emMended/)
 - Run clusterSaarFindLabels.py to do connected components and create the individual labels
 - Run makeItemList.py to create a list for mesh creation that excludes labels that are too small
 - Run multiMesh3.py to create the meshes 

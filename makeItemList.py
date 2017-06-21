@@ -75,6 +75,26 @@ def main():
 	labelStack = np.dstack(labelStack)
 	end = timer()
  	print("Loaded data... time: " + str(end-start))
+ 	
+ 	### Section for picking out a particular ID
+ 	outDir = 'forScaling/'
+ 	ind = np.where(labelStack==45722)
+ 	a = np.zeros(labelStack.shape)
+ 	a[ind] = 99999
+ 	for i in xrange(labelStack.shape[2]):
+		if i < 1022:
+			continue
+		if i > 1027:
+			continue
+		img = labelStack[:,:,i]
+		blankImg = np.zeros(img.shape, np.uint8)
+		blankImg[np.where(img==45722)] = 99999
+		tifffile.imsave(outDir + str(45722) + '_' + str(i), blankImg)
+
+	
+	code.interact(local=locals())
+	###
+		
 	
 	print("X Direction...")
 	finalListX = trackSize(labelStack, 0, start)

@@ -627,13 +627,14 @@ def summarize():
 	with open('summary.txt','w') as f:
 		for i,each in enumerate(chainLengths):
 			f.write(str(chainLengths[i][0]) + ' ' + str(chainLengths[i][1]) + ' ' + str(chainLengths[i][2]) + '\n')
-def buildResultStack(start, write_images_to, write_pickles_to, maskPaths, maskShape):
+def buildResultStack(start, write_images_to, write_pickles_to, maskPaths, maskShape, mainFolderPath, resultFolderPath):
 	picklePaths = sorted(glob.glob(write_pickles_to + '*.p'))
+	mainPaths = natural_sort(glob.glob(mainFolderPath + '*.tif*'))
 
 	pickles = [pickle.load(open(path,'rb')) for path in picklePaths]
 
 	for z in xrange(len(maskPaths)):
-		resultImg = np.zeros(maskShape, np.uint16)
+		resultImg = np.uint8(cv2.imread(mainPaths[z], -1))
 		maskImg = cv2.imread(maskPaths[z], -1)
 
 		for process, color in pickles:
@@ -645,8 +646,7 @@ def buildResultStack(start, write_images_to, write_pickles_to, maskPaths, maskSh
 						resultImg[np.where(maskImg==each)] = color
 					else:
 						resultImg[zip(*each)] = color
-
-		cv2.imwrite(write_images_to + maskPaths[z][maskPaths[z].index('/')+1:], resultImg)
+		tifffile.imsave(resultFolderPath + maskPaths[z][maskPaths[z].index('/')+1:], resultImg)
 		print '\n'
 		print 'Building result stack ' + str(z+1) + '/' + str(len(maskPaths))
 		end = timer()
@@ -678,7 +678,7 @@ def main():
 	minimum_process_length = 100 # Be careful not to set this too high because there may be small chains that can be merged manually with larger chains to complete them
 	write_images_to = 'build/'
 	write_pickles_to = 'pickles/object'
-	trace_objects = True
+	trace_objects = False
 	summarize_chains = False
 	build_resultStack = True
 	################################################################################
@@ -691,11 +691,12 @@ def main():
 	print "Loading data..."
 	maskFolderPath = sys.argv[1]
 	emFolderPath = sys.argv[2]
+	mainFolderPath = sys.argv[3]
+	resultFolderPath = sys.argv[4]
 	maskPaths =  natural_sort(glob.glob(maskFolderPath +'*'))
 	emPaths = natural_sort(glob.glob(emFolderPath +'*'))
 	maskImages = [cv2.imread(maskPaths[z], -1) for z in xrange(len(maskPaths))]
 
-	# code.interact(local=locals())
 	# maskImages = colorize(maskImages)
 	# code.interact(local=locals())
 
@@ -728,7 +729,7 @@ def main():
 	if summarize_chains: summarize()
 
 	# Use the pickle files to build the result stack
-	if build_resultStack: buildResultStack(startTime, write_images_to, write_pickles_to, maskPaths, maskShape)
+	if build_resultStack: buildResultStack(startTime, write_images_to, write_pickles_to, maskPaths, maskShape, mainFolderPath, resultFolderPath)
 
 if __name__ == "__main__":
 	main()

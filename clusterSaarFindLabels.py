@@ -108,8 +108,8 @@ def main():
 	print("stacked")
 
 
-	#subStack = emImages[:, :, ii*100:(ii+1)*100]			
-	
+	#subStack = emImages[:, :, ii*100:(ii+1)*100]
+
 	#shape = [[[0,0,0], [0,1,0], [0,0,0]], [[0,1,0], [1,1,1], [0,1,0]], [[0,0,0], [0,1,0], [0,0,0]]]
 	label_img, number = nd.measurements.label(emImages)
 	#CC = nd.find_objects(label_img)
@@ -117,7 +117,7 @@ def main():
 	#area_mask = (cc_areas < 1500)
 	#label_img[area_mask[label_img]] = 0
 
-	
+
 
 
 	emImages = np.uint32(label_img)

@@ -32,7 +32,7 @@ def findBBDimensions(listOfPixels):
 
 	return [minxs-2, maxxs+2, minys-2, maxys+2, minzs-2, maxzs+2], [dx, dy, dz]
 
-def trackSize(labelStack, axis, start):
+def trackSize(labelStack, axis, start, minLabelSize):
 	tracker = {}
 	for i in xrange(labelStack.shape[axis]):
 		end = timer()
@@ -50,7 +50,7 @@ def trackSize(labelStack, axis, start):
 		for each in tracker.keys():
 			tracker[each][2] += 1
 			if tracker[each][2] > 25:
-				if tracker[each][1] - tracker[each][0] < 500:
+				if tracker[each][1] - tracker[each][0] < minLabelSize:
 					del tracker[each]
 
 		for itm in idList:
@@ -62,12 +62,14 @@ def trackSize(labelStack, axis, start):
 					tracker[itm][1] = i + 1
 					tracker[itm][2] = 0
 
-	finalList = [t for t in tracker.keys() if tracker[t][1] - tracker[t][0] > 500]
+	finalList = [t for t in tracker.keys() if tracker[t][1] - tracker[t][0] > minLabelSize]
 	return finalList
 
 def main():
 	start = timer()
 	labelsFolderPath = sys.argv[1]
+	
+	minLabelSize = sys.argv[2]
 
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
@@ -77,27 +79,26 @@ def main():
  	print("Loaded data... time: " + str(end-start))
 
  	### Section for picking out a particular ID
- 	outDir = 'forScaling/'
- 	ind = np.where(labelStack==45722)
- 	a = np.zeros(labelStack.shape)
- 	a[ind] = 99999
- 	for i in xrange(labelStack.shape[2]):
-		img = labelStack[:,:,i]
-		blankImg = np.zeros(img.shape, np.uint8)
-		blankImg[np.where(img==45722)] = 99999
-		tifffile.imsave(outDir + str(45722) + '_' + str(i) + '.tif', blankImg)
+ 	# outDir = 'forScaling/'
+ 	# ind = np.where(labelStack==45722)
+ 	# a = np.zeros(labelStack.shape)
+ 	# a[ind] = 99999
+ 	# for i in xrange(labelStack.shape[2]):
+	# 	img = labelStack[:,:,i]
+	# 	blankImg = np.zeros(img.shape, np.uint8)
+	# 	blankImg[np.where(img==45722)] = 99999
+	# 	tifffile.imsave(outDir + str(45722) + '_' + str(i) + '.tif', blankImg)
 
 
-	code.interact(local=locals())
 	###
 
 
 	print("X Direction...")
-	finalListX = trackSize(labelStack, 0, start)
+	finalListX = trackSize(labelStack, 0, start, minLabelSize)
 	print("Y Direction...")
-	finalListY = trackSize(labelStack, 1, start)
+	finalListY = trackSize(labelStack, 1, start, minLabelSize)
 	print("Z Direction...")
-	finalListZ = trackSize(labelStack, 2, start)
+	finalListZ = trackSize(labelStack, 2, start, minLabelSize)
 
 	finalList = list(set(finalListX) | set(finalListY) | set(finalListZ))
 	print(end-start)

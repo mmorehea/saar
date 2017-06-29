@@ -264,6 +264,7 @@ def main():
 	img = cv2.imread(em, 0)
 	img = np.uint8(img)
 	noiseKernel = 0
+	tifffile.imsave('docs/img.tif',img)
 
 	while True:
 		print("SAAR MENU")
@@ -274,10 +275,13 @@ def main():
 		choice = raw_input(">")
 		if choice=='1':
 			oldThresh, threshImg = threshVis(img)
+			tifffile.imsave('docs/afterthreshold.tif', threshImg)
 		elif choice=='2':
 			noiseKernel, threshImg = noiseVis(threshImg)
+			tifffile.imsave('docs/afternoiseremoval.tif', threshImg)
 		elif choice=='3':
 			sizeRange, threshImg = sizeVis(threshImg)
+			tifffile.imsave('docs/aftersizefilter.tif', threshImg)
 		elif choice=='4':
 			saveAndQuit(oldThresh, noiseKernel, sizeRange)
 			break

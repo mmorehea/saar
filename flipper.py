@@ -2,14 +2,15 @@ import glob
 import cv2
 import numpy as np
 import tifffile
+import os
+import sys
 
-paths = glob.glob('cap8bit/*.tif')
+folder = sys.argv[1]
+
+paths = glob.glob(folder + '*.tif')
 
 stack = [tifffile.imread(path) for path in paths]
 
-img = stack[0]
-
-img2 = np.flipud(img)
-
-tifffile.imsave('a/a.tif', img)
-tifffile.imsave('a/b.tif', img2)
+for i, img in enumerate(stack):
+	img = np.flipud(img)
+	tifffile.imsave('flipped_emMended_final3/' + str(os.path.basename(paths[i])), img)

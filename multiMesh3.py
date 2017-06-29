@@ -20,6 +20,9 @@ from timeit import default_timer as timer
 SCALEX = 10.0
 SCALEY = 10.0
 SCALEZ = 1.0
+
+XOFFSET = 456.0
+YOFFSET = 456.0
 labelStack = []
 meshes = []
 
@@ -59,7 +62,7 @@ def calcMesh(label):
 	with open(meshes + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
-			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX), (box[2] * SCALEY) + (v[1] * SCALEY), (box[4] * SCALEZ) + v[0] * 5.454545))
+			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX) + XOFFSET, (box[2] * SCALEY) + (v[1] * SCALEY) + YOFFSET, (box[4] * SCALEZ) + v[0] * 5.454545))
 		for n in normals:
 			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
 		for face in faces:
@@ -89,7 +92,7 @@ def main():
 		itemlist = list(np.load(fp))
 		itemlist = itemlist[1:]
 
-	# itemlist = np.unique(labelStack)[1:]
+	itemlist = np.unique(labelStack)[1:]
 
 	print("Found labels...")
 	print("firstlabel: " + str(itemlist[0]))

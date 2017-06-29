@@ -35,6 +35,7 @@ def main():
 		blankStack[np.where(labelStack==labelID)] = 99999
 
 		printStack(blankStack, 'singleLabel/')
+		code.interact(local=locals())
 
 		for z in xrange(blankStack.shape[2]):
 			print(z)

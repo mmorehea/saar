@@ -26,6 +26,7 @@ import json
 from scipy import ndimage as nd
 import tifffile
 import re
+from random import randint
 
 def findBBDimensions(listofpixels):
 	if len(listofpixels) == 0:
@@ -634,10 +635,17 @@ def buildResultStack(start, write_images_to, write_pickles_to, maskPaths, maskSh
 	pickles = [pickle.load(open(path,'rb')) for path in picklePaths]
 
 	for z in xrange(len(maskPaths)):
-		resultImg = np.uint8(cv2.imread(mainPaths[z], -1))
+		resultImg = np.uint16(tifffile.imread(mainPaths[z]))
 		maskImg = cv2.imread(maskPaths[z], -1)
 
+		colorList = list(np.unique(resultImg))
+
 		for process, color in pickles:
+
+			while color in colorList:
+				color = randint(1,2**16)
+			colorList.append(color)
+
 			if z in process.keys():
 				for each in process[z]:
 					if each == None:
@@ -646,6 +654,7 @@ def buildResultStack(start, write_images_to, write_pickles_to, maskPaths, maskSh
 						resultImg[np.where(maskImg==each)] = color
 					else:
 						resultImg[zip(*each)] = color
+
 		tifffile.imsave(resultFolderPath + maskPaths[z][maskPaths[z].index('/')+1:], resultImg)
 		print '\n'
 		print 'Building result stack ' + str(z+1) + '/' + str(len(maskPaths))

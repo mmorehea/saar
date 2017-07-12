@@ -84,7 +84,7 @@ def main():
 	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
 	print(alreadyDone)
 
-	with open ('zLabels.npy', 'rb') as fp:
+	with open ('outfile.npy', 'rb') as fp:
 		itemlist = np.load(fp)
 		itemlist = itemlist[10:]
 

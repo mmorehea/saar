@@ -63,13 +63,14 @@ def trackSize(labelStack, axis, start, minLabelSize):
 					tracker[itm][2] = 0
 
 	finalList = [t for t in tracker.keys() if tracker[t][1] - tracker[t][0] > minLabelSize]
+		
 	return finalList
 
 def main():
 	start = timer()
 	labelsFolderPath = sys.argv[1]
 	
-	minLabelSize = sys.argv[2]
+	minLabelSize = int(sys.argv[2])
 
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
@@ -102,7 +103,7 @@ def main():
 
 	finalList = list(set(finalListX) | set(finalListY) | set(finalListZ))
 	print(end-start)
-
+	
 	np.save('outfile.npy', finalList)
 
 if __name__ == "__main__":

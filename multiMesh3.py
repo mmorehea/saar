@@ -44,20 +44,24 @@ def findBBDimensions(listOfPixels):
 	dy = maxys - minys
 	dz = maxzs - minzs
 
-	return [minxs-2, maxxs+2, minys-2, maxys+2, minzs-2, maxzs+2], [dx, dy, dz]
+	return [minxs, maxxs, minys, maxys, minzs, maxzs], [dx, dy, dz]
 
-def calcMesh(label):
+def calcMesh(label, meshes):
+	print(label)
 
 	indices = np.where(labelStack==label)
 	box, dimensions = findBBDimensions(indices)
+	print(box)
 
 
 	window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
 	localIndices = np.where(window==label)
 	blankImg = np.zeros(window.shape, dtype=bool)
 	blankImg[localIndices] = 1
-
-	vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
+	try:
+		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
+	except:
+		return
 
 	with open(meshes + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
@@ -77,8 +81,22 @@ def main():
 
 	alreadyDone = glob.glob(meshes + "*.obj")
 
-	alreadyDone = [i.split("\\") for i in alreadyDone]
+	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
 	print(alreadyDone)
+
+	with open ('zLabels.npy', 'rb') as fp:
+		itemlist = np.load(fp)
+		itemlist = itemlist[10:]
+
+	itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
+
+	#code.interact(local=locals())
+
+	#itemlist = np.unique(labelStack)[1:]
+
+	print("Found labels...")
+	print("firstlabel: " + str(itemlist[0]))
+	print("Number of labels", str(len(itemlist)))
 
 	labelsFolderPath = sys.argv[1]
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
@@ -88,25 +106,17 @@ def main():
 	labelStack = np.dstack(labelStack)
 
 	print("Loaded data...")
-	with open ('outfile.npy', 'rb') as fp:
-		itemlist = list(np.load(fp))
-		itemlist = itemlist[1:]
 
-	itemlist = np.unique(labelStack)[1:]
-
-	print("Found labels...")
-	print("firstlabel: " + str(itemlist[0]))
-	print("Number of labels", str(len(itemlist)))
 
 	# pool = ThreadPool(NUMBERCORES)
-
-	itemlist = [itm for itm in itemlist if itm not in alreadyDone]
+	
+	
 	
 	# for i, _ in enumerate(pool.imap_unordered(calcMesh, itemlist), 1):
 	# 	sys.stderr.write('\rdone {0:%}'.format(i/len(itemlist)))
 	
 	for i, itm in enumerate(itemlist):
-		calcMesh(itm)
+		calcMesh(itm, meshes)
 		end = timer()
 		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
 

@@ -51,6 +51,8 @@ def calcMesh(label, meshes):
 
 	indices = np.where(labelStack==label)
 	box, dimensions = findBBDimensions(indices)
+	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
+		return
 	print(box)
 
 

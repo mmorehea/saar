@@ -75,7 +75,7 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	area_mask[0] = False
 
 	# Remove small axons within bundles from the area mask
-	r = 20 # minimum distance for a blob to be considered a neighbor
+	r = 20 # maximum distance for a blob to be considered a neighbor
 	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
 	for i, value in enumerate(area_mask):
 		if value == True:

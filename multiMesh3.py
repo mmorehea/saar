@@ -62,6 +62,7 @@ def calcMesh(label, meshes):
 	localIndices = np.where(window==label)
 	blankImg = np.zeros(window.shape, dtype=bool)
 	blankImg[localIndices] = 1
+	blankImg = np.pad(blankImg, (1,1), 'constant', constant_values=0)
 	try:
 		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
 	except:
@@ -70,7 +71,7 @@ def calcMesh(label, meshes):
 	with open(meshes + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
-			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX) + XOFFSET, (box[2] * SCALEY) + (v[1] * SCALEY) + YOFFSET, (box[4] * SCALEZ) + v[0] * 5.454545))
+			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + ((v[2]-1) * SCALEX) + XOFFSET, (box[2] * SCALEY) + ((v[1]-1) * SCALEY) + YOFFSET, (box[4] * SCALEZ) + (v[0]-1) * 5.454545))
 		for n in normals:
 			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
 		for face in faces:
@@ -113,12 +114,12 @@ def main():
 
 
 	# pool = ThreadPool(NUMBERCORES)
-	
-	
-	
+
+
+
 	# for i, _ in enumerate(pool.imap_unordered(calcMesh, itemlist), 1):
 	# 	sys.stderr.write('\rdone {0:%}'.format(i/len(itemlist)))
-	
+
 	for i, itm in enumerate(itemlist):
 		calcMesh(itm, meshes)
 		end = timer()

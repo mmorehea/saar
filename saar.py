@@ -7,6 +7,8 @@ import sys
 import glob
 import code
 import tifffile
+import threading
+from marching_cubes import march
 from timeit import default_timer as timer
 import ConfigParser
 from scipy import ndimage as nd
@@ -24,7 +26,7 @@ import math
 
 # from mass.py
 NUMBERCORES = multiprocessing.cpu_count()
-print "Found " + str(NUMBERCORES) + " number of cores. Using " + str(NUMBERCORES - 1) + "."
+print("Found " + str(NUMBERCORES) + " number of cores. Using " + str(NUMBERCORES - 1) + ".")
 NUMBERCORES -= 1
 
 threshVal = 0
@@ -108,7 +110,7 @@ def threshVis(img):
 			threshImg = cv2.resize(threshImg, (950, 750))
 			cv2.imshow('image', threshImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
 		r = cv2.getTrackbarPos('Threshold','image')
@@ -136,7 +138,7 @@ def noiseVis(threshImg):
 			kernelImg = cv2.resize(kernelImg, (950, 750))
 			cv2.imshow('image', kernelImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 		ks = cv2.getTrackbarPos('Kernel Size for Noise Removal', 'image')
 		# get current positions of four trackbars
 
@@ -166,7 +168,7 @@ def sizeVis(img):
 			threshImg = cv2.resize(threshImg, (950, 750))
 			cv2.imshow('image', threshImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
 		lowerPercentile = cv2.getTrackbarPos('Lowest Size Percentile','image')
@@ -189,7 +191,7 @@ def findCentroid(listofpixels):
 	try:
 		centroid = int(round(np.mean(rows))), int(round(np.mean(cols)))
 	except:
-		print 'error'
+		print('error')
 		code.interact(local=locals())
 		centroid = (0,0)
 	return centroid
@@ -239,7 +241,7 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	area_mask[0] = False
 
 	# Remove small axons within bundles from the area mask
-	r = 20 # minimum distance for a blob to be considered a neighbor
+	r = 20 # maximum distance for a blob to be considered a neighbor
 	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
 	for i, value in enumerate(area_mask):
 		if value == True:
@@ -294,7 +296,7 @@ def getParameters(img):
 	noiseKernel, threshImg = noiseVis(threshImg)
 	sizeRange, threshImg = sizeVis(threshImg)
 
-	print "Writing configuration file..."
+	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')
 	Config = ConfigParser.ConfigParser()
 	Config.add_section('Options')
@@ -315,19 +317,19 @@ def applyParams(emPaths):
 		global threshVal
 		threshVal = int(config.get('Options', 'Threshold Value'))
 	except:
-		print "threshVal not found in config file, did you set the parameters?"
+		print("threshVal not found in config file, did you set the parameters?")
 	try:
 		global p
 		p = int(config.get('Options', 'Remove Noise Kernel Size'))
 	except:
-		print "kernel value not found in config file, did you set the parameters?"
+		print("kernel value not found in config file, did you set the parameters?")
 	try:
 		global lowerSizeVal
 		lowerSizeVal = int(config.get('Options', 'Filter Size Lower Bound'))
 		global upperSizeVal
 		upperSizeVal = int(config.get('Options', 'Filter Size Upper Bound'))
 	except:
-		print "size values not found in config file, did you set the parameters?"
+		print("size values not found in config file, did you set the parameters?")
 
 	pool = ThreadPool(NUMBERCORES)
 
@@ -355,7 +357,7 @@ def connectedComponents(massFolderPath, labelsFolderPath):
 
 
 	for each in range(images.shape[2]):
-		print each
+		print(each)
 		img = images[:,:,each]
 		tifffile.imsave(labelsFolderPath + str(os.path.basename(threshPaths[each])), img)
 
@@ -393,14 +395,14 @@ def trackSize(labelStack, axis, start, minLabelSize):
 
 	return finalList
 
-def makeItemList(labelsFolderPath):
+def makeItemList(labelsFolderPath, minLabelSize):
 	start = timer()
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 
 	labelStack = np.dstack(labelStack)
 
- 	print("Loaded data... time: " + str(end-start))
+	print("Loaded data... time: " + str(timer()-start))
 
 
 	print("X Direction...")
@@ -415,64 +417,6 @@ def makeItemList(labelsFolderPath):
 
 	np.save('outfile.npy', finalList)
 
-def calcMesh(label, meshes):
-	print(label)
-
-	indices = np.where(labelStack==label)
-	box, dimensions = findBBDimensions(indices)
-	print(box)
-	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
-		print('skipped')
-		return
-
-	window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
-	localIndices = np.where(window==label)
-	blankImg = np.zeros(window.shape, dtype=bool)
-	blankImg[localIndices] = 1
-	try:
-		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
-	except:
-		return
-
-	with open(meshes + str(label)+".obj", 'w') as f:
-		f.write("# OBJ file\n")
-		for v in vertices:
-			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX) + XOFFSET, (box[2] * SCALEY) + (v[1] * SCALEY) + YOFFSET, (box[4] * SCALEZ) + v[0] * 5.454545))
-		for n in normals:
-			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
-		for face in faces:
-			f.write("f %d %d %d \n" % (face[0]+1, face[1]+1, face[2]+1))
-
-def generateMeshes(meshesFolderPath, labelsFolderPath):
-	start = timer()
-	q = queue.Queue()
-
-	alreadyDone = glob.glob(meshesFolderPath + "*.obj")
-
-	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
-	print(alreadyDone)
-
-	with open ('outfile.npy', 'rb') as fp:
-		itemlist = np.load(fp)
-		itemlist = itemlist[10:] # Why is this?
-
-	itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
-
-	print("Found labels...")
-	print("firstlabel: " + str(itemlist[0]))
-	print("Number of labels", str(len(itemlist)))
-
-	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
-	#code.interact(local=locals())
-	global labelStack
-	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
-	labelStack = np.dstack(labelStack)
-	print("Loaded data...")
-
-	for i, itm in enumerate(itemlist):
-		calcMesh(itm, meshes)
-		end = timer()
-		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
 
 def main():
 	start = timer()
@@ -504,7 +448,6 @@ def main():
 			emImages = applyParams(emPaths)
 			connectedComponents(massFolderPath, labelsFolderPath)
 			makeItemList(labelsFolderPath, minLabelSize)
-			generateMeshes(meshesFolderPath, labelsFolderPath)
 			code.interact(local=locals())
 		elif choice=='3':
 			continue

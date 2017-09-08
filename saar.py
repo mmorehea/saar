@@ -8,9 +8,9 @@ import glob
 import code
 import tifffile
 import threading
-from marching_cubes import march
+
 from timeit import default_timer as timer
-import ConfigParser
+import configparser
 from scipy import ndimage as nd
 from skimage import measure
 try:
@@ -21,7 +21,7 @@ from itertools import cycle
 import multiprocessing
 from multiprocessing.dummy import Pool as ThreadPool
 import threading
-import cPickle as pickle
+import pickle
 import math
 
 # from mass.py
@@ -298,7 +298,7 @@ def getParameters(img):
 
 	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')
-	Config = ConfigParser.ConfigParser()
+	Config = configparser.ConfigParser()
 	Config.add_section('Options')
 	Config.set('Options','Threshold Value', oldThresh)
 	Config.set('Options','Remove Noise Kernel Size', noiseKernel)
@@ -310,7 +310,7 @@ def getParameters(img):
 def applyParams(emPaths):
 	emImages = [cv2.imread(path,-1) for path in emPaths]
 	cfgfile = open("saar.ini",'r')
-	config = ConfigParser.ConfigParser()
+	config = configparser.ConfigParser()
 	config.read('saar.ini')
 
 	try:
@@ -439,7 +439,7 @@ def main():
 		print("2. Generate Meshes (takes about a day)")
 		print("3. Separate False Merges")
 		print("4. Quit")
-		choice = raw_input(">")
+		choice = input(">")
 		if choice=='1':
 			getParameters(img)
 		elif choice=='2':

@@ -184,6 +184,7 @@ def sizeVis(img):
 	return sizeRange, threshImg
 
 def findCentroid(listofpixels):
+
 	if len(listofpixels) == 0:
 		return (0,0)
 	rows = [p[0] for p in listofpixels]
@@ -246,7 +247,7 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	for i, value in enumerate(area_mask):
 		if value == True:
 			a = np.where(label_img==i)
-			label = zip(a[0],a[1])
+			label = list(zip(a[0],a[1]))
 
 
 			centroid = findCentroid(label)
@@ -254,7 +255,7 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 			y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
 			mask = x*x + y*y <= r*r
 
-			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[zip(*label)][0]]
+			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[label[0]]]
 
 			if len(neighborLabels) > minNeighborCount:
 				area_mask[i] = False
@@ -300,10 +301,10 @@ def getParameters(img):
 	cfgfile = open("saar.ini",'w')
 	Config = configparser.ConfigParser()
 	Config.add_section('Options')
-	Config.set('Options','Threshold Value', oldThresh)
-	Config.set('Options','Remove Noise Kernel Size', noiseKernel)
-	Config.set('Options','Filter Size Lower Bound', sizeRange[0])
-	Config.set('Options','Filter Size Upper Bound', sizeRange[1])
+	Config.set('Options','Threshold Value', str(oldThresh))
+	Config.set('Options','Remove Noise Kernel Size', str(noiseKernel))
+	Config.set('Options','Filter Size Lower Bound', str(sizeRange[0]))
+	Config.set('Options','Filter Size Upper Bound', str(sizeRange[1]))
 	Config.write(cfgfile)
 	cfgfile.close()
 
@@ -332,9 +333,10 @@ def applyParams(emPaths):
 		print("size values not found in config file, did you set the parameters?")
 
 	pool = ThreadPool(NUMBERCORES)
-
+	#
 	for i, _ in enumerate(pool.imap_unordered(processSlice, emPaths), 1):
-	    sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
+		sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
+
 
 	# processedStack = pool.map(processSlice, images)
 
@@ -345,7 +347,7 @@ def connectedComponents(massFolderPath, labelsFolderPath):
 
 	threshPaths = sorted(glob.glob(massFolderPath +'*.tif*'))
 
-	images = [cv2.imread(threshPaths[z], -1) for z in xrange(len(threshPaths))]
+	images = [cv2.imread(threshPaths[z], -1) for z in range(len(threshPaths))]
 	print("loaded")
 	images = np.dstack(images)
 	print("stacked")
@@ -363,7 +365,7 @@ def connectedComponents(massFolderPath, labelsFolderPath):
 
 def trackSize(labelStack, axis, start, minLabelSize):
 	tracker = {}
-	for i in xrange(labelStack.shape[axis]):
+	for i in range(labelStack.shape[axis]):
 		end = timer()
 		print(str(i) + "/" + str(labelStack.shape[axis]) + " time: " + str(end-start))
 
@@ -436,22 +438,25 @@ def main():
 	while True:
 		print("SAAR MENU")
 		print("1. Set Parameters")
-		print("2. Generate Meshes (takes about a day)")
-		print("3. Separate False Merges")
-		print("4. Quit")
+		print("2. Apply Parameters to Whole Stack)")
+		print("3. Connected Components Labeling)")
+		print("4. Filter Labels by Size (for easier meshing)")
+		print("5. Separate False Merges")
+		print("6. Quit")
 		choice = input(">")
 		if choice=='1':
 			getParameters(img)
 		elif choice=='2':
 			print("Enter a minimum label size:")
-			minLabelSize = int(raw_input(">"))
 			emImages = applyParams(emPaths)
-			connectedComponents(massFolderPath, labelsFolderPath)
-			makeItemList(labelsFolderPath, minLabelSize)
-			code.interact(local=locals())
 		elif choice=='3':
-			continue
+			connectedComponents(massFolderPath, labelsFolderPath)
 		elif choice=='4':
+			minLabelSize = int(input(">"))
+			makeItemList(labelsFolderPath, minLabelSize)
+		elif choice=='5':
+			continue
+		elif choice=='6':
 			sys.exit()
 		else:
 			continue

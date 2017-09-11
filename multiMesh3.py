@@ -89,11 +89,15 @@ def main():
 	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
 	print(alreadyDone)
 
-	with open ('outfile.npy', 'rb') as fp:
-		itemlist = np.load(fp)
-		itemlist = itemlist[10:]
+	# with open ('outfile.npy', 'rb') as fp:
+	# 	itemlist = np.load(fp)
+	# 	itemlist = itemlist[10:]
+	#
+	# itemlist = [63373, 94073]
+	#
+	# itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
 
-	itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
+	itemlist = [255]
 
 	#code.interact(local=locals())
 

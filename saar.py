@@ -8,7 +8,7 @@ import glob
 import code
 import tifffile
 import threading
-
+from marching_cubes import march
 from timeit import default_timer as timer
 import configparser
 from scipy import ndimage as nd
@@ -419,6 +419,64 @@ def makeItemList(labelsFolderPath, minLabelSize):
 
 	np.save('outfile.npy', finalList)
 
+def calcMesh(label, meshes):
+	print(label)
+
+	indices = np.where(labelStack==label)
+	box, dimensions = findBBDimensions(indices)
+	print(box)
+	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
+		print('skipped')
+		return
+
+	window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
+	localIndices = np.where(window==label)
+	blankImg = np.zeros(window.shape, dtype=bool)
+	blankImg[localIndices] = 1
+	try:
+		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
+	except:
+		return
+
+	with open(meshes + str(label)+".obj", 'w') as f:
+		f.write("# OBJ file\n")
+		for v in vertices:
+			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX) + XOFFSET, (box[2] * SCALEY) + (v[1] * SCALEY) + YOFFSET, (box[4] * SCALEZ) + v[0] * 5.454545))
+		for n in normals:
+			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
+		for face in faces:
+			f.write("f %d %d %d \n" % (face[0]+1, face[1]+1, face[2]+1))
+
+def generateMeshes(meshesFolderPath, labelsFolderPath):
+	start = timer()
+	q = queue.Queue()
+
+	alreadyDone = glob.glob(meshesFolderPath + "*.obj")
+
+	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
+	print(alreadyDone)
+
+	with open ('outfile.npy', 'rb') as fp:
+		itemlist = np.load(fp)
+		itemlist = itemlist[10:] # Why is this?
+
+	itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
+
+	print("Found labels...")
+	print("firstlabel: " + str(itemlist[0]))
+	print("Number of labels", str(len(itemlist)))
+
+	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
+	#code.interact(local=locals())
+	global labelStack
+	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
+	labelStack = np.dstack(labelStack)
+	print("Loaded data...")
+
+	for i, itm in enumerate(itemlist):
+		calcMesh(itm, meshes)
+		end = timer()
+		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
 
 def main():
 	start = timer()
@@ -438,25 +496,35 @@ def main():
 	while True:
 		print("SAAR MENU")
 		print("1. Set Parameters")
-		print("2. Apply Parameters to Whole Stack)")
-		print("3. Connected Components Labeling)")
-		print("4. Filter Labels by Size (for easier meshing)")
-		print("5. Separate False Merges")
-		print("6. Quit")
+		print("2. Run 3-5")
+		print("\t3. Apply Parameters to Whole Stack")
+		print("\t4. Connected Components Labeling")
+		print("\t5. Filter Labels by Size (for easier meshing)")
+		print("6. Generate Meshes (use multiMesh3 for now)")
+		print("7. Separate False Merges (not ready yet)")
+		print("8. Quit")
 		choice = input(">")
 		if choice=='1':
 			getParameters(img)
 		elif choice=='2':
 			print("Enter a minimum label size:")
+			minLabelSize = int(input(">"))
 			emImages = applyParams(emPaths)
-		elif choice=='3':
 			connectedComponents(massFolderPath, labelsFolderPath)
+			makeItemList(labelsFolderPath, minLabelSize)
+		elif choice=='3':
+			emImages = applyParams(emPaths)
 		elif choice=='4':
+			connectedComponents(massFolderPath, labelsFolderPath)
+		elif choice=='5':
+			print("Enter a minimum label size:")
 			minLabelSize = int(input(">"))
 			makeItemList(labelsFolderPath, minLabelSize)
-		elif choice=='5':
-			continue
 		elif choice=='6':
+			generateMeshes(meshesFolderPath, labelsFolderPath)
+		elif choice=='7':
+			continue
+		elif choice=='8':
 			sys.exit()
 		else:
 			continue

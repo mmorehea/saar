@@ -19,7 +19,7 @@ from timeit import default_timer as timer
 
 SCALEX = 10.0
 SCALEY = 10.0
-SCALEZ = 1.0
+SCALEZ = 5.454545
 
 XOFFSET = 456.0
 YOFFSET = 456.0
@@ -52,9 +52,9 @@ def calcMesh(label, meshes):
 	indices = np.where(labelStack==label)
 	box, dimensions = findBBDimensions(indices)
 	print(box)
-	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
-		print('skipped')
-		return
+	# if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
+	# 	print('skipped')
+	# 	return
 
 
 
@@ -92,9 +92,6 @@ def main():
 	# with open ('outfile.npy', 'rb') as fp:
 	# 	itemlist = np.load(fp)
 	# 	itemlist = itemlist[10:]
-	#
-	# itemlist = [63373, 94073]
-	#
 	# itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
 
 	itemlist = [255]

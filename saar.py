@@ -8,7 +8,7 @@ import glob
 import code
 import tifffile
 import threading
-from marching_cubes import march
+#from marching_cubes import march
 from timeit import default_timer as timer
 import configparser
 from scipy import ndimage as nd
@@ -378,11 +378,12 @@ def trackSize(labelStack, axis, start, minLabelSize):
 
 		idList = np.unique(img)
 
-		for each in tracker.keys():
+
+		for each in list(tracker):
 			tracker[each][2] += 1
 			if tracker[each][2] > 25:
 				if tracker[each][1] - tracker[each][0] < minLabelSize:
-					del tracker[each]
+					tracker.pop(each)
 
 		for itm in idList:
 

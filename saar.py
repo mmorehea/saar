@@ -74,6 +74,7 @@ def adjustThresh(originalImg, value):
 	thresh1 = np.uint8(nd.morphology.binary_fill_holes(thresh1))
 	ret,thresh1 = cv2.threshold(thresh1, 0, 255, cv2.THRESH_BINARY)
 	thresh1 = cv2.erode(thresh1, kernel, 1)
+
 	return thresh1
 
 def adjustContours(kernelImg, kernelSize):
@@ -102,12 +103,12 @@ def threshVis(img):
 	# create trackbars for picking threshold
 	cv2.createTrackbar('Threshold', 'image', 0, 255, nothing)
 	threshImg = img
+	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
 	while(1):
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
 		try:
-			threshImg = cv2.resize(threshImg, (950, 750))
 			cv2.imshow('image', threshImg)
 		except:
 			print('WARNING: cv2 did not read the image correctly')
@@ -117,6 +118,7 @@ def threshVis(img):
 		if (r != oldThresh):
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
+
 
 	cv2.destroyAllWindows()
 
@@ -129,14 +131,15 @@ def noiseVis(threshImg):
 	threshImg = np.uint8(threshImg)
 
 	kernelImg = np.uint8(threshImg)
+	# kernelImg = cv2.resize(kernelImg, (950*2, 750*2))
 	cv2.createTrackbar('Kernel Size for Noise Removal', 'image', 1, 10, nothing)
 	while(1):
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
 		try:
-			kernelImg = cv2.resize(kernelImg, (950, 750))
 			cv2.imshow('image', kernelImg)
+
 		except:
 			print('WARNING: cv2 did not read the image correctly')
 		ks = cv2.getTrackbarPos('Kernel Size for Noise Removal', 'image')
@@ -146,8 +149,8 @@ def noiseVis(threshImg):
 			# print ks
 			oldKernel = ks
 			kernelImg = cv2.morphologyEx(threshImg, cv2.MORPH_OPEN, np.ones((ks,ks)))
+			# kernelImg = cv2.dilate(kernelImg, (2,2), iterations=ks)
 			ret,kernelImg = cv2.threshold(kernelImg, 0, 255, cv2.THRESH_BINARY)
-			# kernelImg = cv2.erode(kernelImg, (ks,ks), 6)
 
 	cv2.destroyAllWindows()
 	return oldKernel, kernelImg
@@ -160,12 +163,13 @@ def sizeVis(img):
 	cv2.createTrackbar('Lowest Size Percentile', 'image', 0, 100, nothing)
 	cv2.createTrackbar('Highest Size Percentile', 'image', 99, 100, nothing)
 	threshImg = img
+	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
+	# ret,threshImg = cv2.threshold(threshImg, 0, 255, cv2.THRESH_BINARY)
 	while(1):
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
 		try:
-			threshImg = cv2.resize(threshImg, (950, 750))
 			cv2.imshow('image', threshImg)
 		except:
 			print('WARNING: cv2 did not read the image correctly')
@@ -281,6 +285,7 @@ def adjustNoise(threshImg, ks):
 def processSlice(imgPath):
 	img = cv2.imread(imgPath, -1)
 	img = np.uint8(img)
+	# img = cv2.bitwise_not(img)
 
 	outImg = adjustThresh(img, threshVal)
 
@@ -293,9 +298,13 @@ def processSlice(imgPath):
 	return outImg
 
 def getParameters(img):
+	# img = cv2.bitwise_not(img)
 	oldThresh, threshImg = threshVis(img)
+	tifffile.imsave('afterthresh2.tif', threshImg)
 	noiseKernel, threshImg = noiseVis(threshImg)
+	tifffile.imsave('afternoise2.tif', threshImg)
 	sizeRange, threshImg = sizeVis(threshImg)
+	
 
 	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')

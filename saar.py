@@ -278,6 +278,7 @@ def adjustNoise(threshImg, ks):
 
 	return kernelImg
 
+
 def processSlice(imgPath):
 	img = cv2.imread(imgPath, -1)
 	img = np.uint8(img)
@@ -296,6 +297,8 @@ def getParameters(img):
 	oldThresh, threshImg = threshVis(img)
 	noiseKernel, threshImg = noiseVis(threshImg)
 	sizeRange, threshImg = sizeVis(threshImg)
+	tifffile.imsave('threshImg.tif', threshImg)
+
 
 	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')

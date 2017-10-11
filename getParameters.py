@@ -6,7 +6,7 @@ import glob
 import code
 import tifffile
 from timeit import default_timer as timer
-import ConfigParser
+import configparser
 from scipy import ndimage as nd
 
 def adjustThresh(originalImg, value):
@@ -52,7 +52,7 @@ def threshVis(img):
 			# threshImg = cv2.resize(threshImg, (1900, 1200))
 			cv2.imshow('image', threshImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
 		r = cv2.getTrackbarPos('Threshold','image')
@@ -80,7 +80,7 @@ def noiseVis(threshImg):
 			# kernelImg = cv2.resize(kernelImg, (1900, 1200))
 			cv2.imshow('image', kernelImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 		ks = cv2.getTrackbarPos('Kernel Size for Noise Removal', 'image')
 		# get current positions of four trackbars
 
@@ -110,7 +110,7 @@ def sizeVis(img):
 			# threshImg = cv2.resize(threshImg, (1900, 1200))
 			cv2.imshow('image', threshImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
 		lowerPercentile = cv2.getTrackbarPos('Lowest Size Percentile','image')
@@ -133,7 +133,7 @@ def findCentroid(listofpixels):
 	try:
 		centroid = int(round(np.mean(rows))), int(round(np.mean(cols)))
 	except:
-		print 'error'
+		print('error')
 		code.interact(local=locals())
 		centroid = (0,0)
 	return centroid
@@ -223,7 +223,7 @@ def contourVis(img, threshImg):
 			kernelImg = cv2.resize(kernelImg, (1900, 1200))
 			cv2.imshow('image', kernelImg)
 		except:
-			print 'WARNING: cv2 did not read the image correctly'
+			print('WARNING: cv2 did not read the image correctly')
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
@@ -237,7 +237,7 @@ def contourVis(img, threshImg):
 		# get current positions of four trackbars
 
 		if (ks != oldKernel):
-			print ks
+			print(ks)
 			oldKernel = ks
 			kernelImg = adjustContours(threshImg, ks)
 
@@ -245,7 +245,7 @@ def contourVis(img, threshImg):
 	return oldKernel, kernelImg
 
 def saveAndQuit(oldThresh, noiseKernel, sizeRange):
-	print "Writing configuration file..."
+	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')
 	Config = ConfigParser.ConfigParser()
 	Config.add_section('Options')
@@ -272,7 +272,7 @@ def main():
 		print("2. Remove Noise")
 		print("3. Filter by Size")
 		print("4. Save and Quit")
-		choice = raw_input(">")
+		choice = input(">")
 		if choice=='1':
 			oldThresh, threshImg = threshVis(img)
 			tifffile.imsave('docs/afterthreshold.tif', threshImg)

@@ -75,7 +75,7 @@ def calcMeshWithCrop(stackname, labelStack, location, simplify, tags):
 	print(s)
 	subprocess.call(s, shell=True)
 
-def calcMesh(stackname, labelStack, location, simplify):
+def calcMesh(stackname, labelStack, location, simplify, box):
 	labelStack = np.swapaxes(labelStack, 0, 2)
 	print("Building mesh...")
 	vertices, normals, faces = march(labelStack, 3)  # 3 smoothing rounds
@@ -98,9 +98,9 @@ def calcMesh(stackname, labelStack, location, simplify):
 	# 	return
 	# else:
 	# 	if platform.system() == "Darwin":
-	# 		s = './binOSX/simplify ./' + location + os.path.basename(stackname) +".obj ./" + location + os.path.basename(stackname) +".smooth.obj " + str(simplify)
+	# 		s = './binOSX/simplify ' + location + os.path.basename(stackname) +".obj " + location + os.path.basename(stackname) +".smooth.obj " + str(simplify)
 	# 	else:
-	# 		s = './binLinux/simplify ./' + location + os.path.basename(stackname) +".obj ./" + location + os.path.basename(stackname) +".smooth.obj " + str(simplify)
+	# 		s = './binLinux/simplify ' + location + os.path.basename(stackname) +".obj " + location + os.path.basename(stackname) +".smooth.obj " + str(simplify)
 	# print(s)
 	# subprocess.call(s, shell=True)
 
@@ -181,17 +181,17 @@ def main():
 	meshes = sys.argv[2]
 	simplify = sys.argv[3]
 	alreadyDone = glob.glob(meshes + "*.obj")
-	alreadyDone = [os.path.basename(i)[:-4] for i in alreadyDone]
+	alreadyDone = [int(os.path.basename(i)[:-4]) for i in alreadyDone]
 
 	labelsFolderPath = sys.argv[1]
 
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
 	#code.interact(local=locals())
 	for ii,stack in enumerate(labelsPaths):
-		if os.path.basename(stack) in alreadyDone:
-			print("Detected already processed file. Skipping.")
-			print("[Delete file in output folder to reprocess.]")
-			continue
+		#if os.path.basename(stack) in alreadyDone:
+		#	print("Detected already processed file. Skipping.")
+		#	print("[Delete file in output folder to reprocess.]")
+		#	continue
 		print("Starting " + stack)
 		labelStack = tifffile.imread(stack)
 		labelStack = np.dstack(labelStack)
@@ -204,15 +204,18 @@ def main():
 		with open ('outfile.npy', 'rb') as fp:
 			itemlist = np.load(fp)
 			itemlist = itemlist[10:]
-		itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
+		itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
+		
 
 		print("Found labels...")
 		print("firstlabel: " + str(itemlist[0]))
 		print("Number of labels", str(len(itemlist)))
-
+		#code.interact(local=locals())
 		for i, itm in enumerate(itemlist):
 			indices = np.where(labelStack==itm)
-			box, dimensions = findBBDimensions(indices)
+			try:
+				box, dimensions = findBBDimensions(indices)
+			except: code.interact(local=locals())
 			print(box)
 
 
@@ -221,9 +224,9 @@ def main():
 			blankImg = np.zeros(window.shape, dtype=bool)
 			blankImg[localIndices] = 1
 			blankImg = np.pad(blankImg, (1,1), 'constant', constant_values=0)
-			blankImg = np.dsplit(blankImg)
+			#blankImg = np.dsplit(blankImg)
 
-			calcMesh(stack, blankImg, meshes, simplify)
+			calcMesh(str(itm), blankImg, meshes, simplify, box)
 
 
 if __name__ == "__main__":

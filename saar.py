@@ -23,6 +23,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 import threading
 import pickle
 import math
+import collections
 
 # from mass.py
 NUMBERCORES = multiprocessing.cpu_count()
@@ -47,7 +48,25 @@ labelStack = []
 meshesFolderPath = []
 # -----
 
-def findBBDimensions(listOfPixels):
+def findBBDimensions2D(listofpixels):
+	if len(listofpixels) == 0:
+		return None
+	else:
+		xs = [x[0] for x in listofpixels]
+		ys = [y[1] for y in listofpixels]
+
+		minxs = min(xs)
+		maxxs = max(xs)
+
+		minys = min(ys)
+		maxys = max(ys)
+
+		dx = max(xs) - min(xs)
+		dy = max(ys) - min(ys)
+
+		return [minxs, maxxs+1, minys, maxys+1], [dx, dy]
+
+def findBBDimensions3D(listOfPixels):
 	xs = listOfPixels[0]
 	ys = listOfPixels[1]
 	zs = listOfPixels[2]
@@ -160,8 +179,8 @@ def sizeVis(img):
 	sizeRange = [0,99]
 	cv2.namedWindow('image')
 
-	cv2.createTrackbar('Lowest Size Percentile', 'image', 0, 100, nothing)
-	cv2.createTrackbar('Highest Size Percentile', 'image', 99, 100, nothing)
+	cv2.createTrackbar('Lowest Size Percentile', 'image', 0, 10000, nothing)
+	cv2.createTrackbar('Highest Size Percentile', 'image', 9999, 10000, nothing)
 	threshImg = img
 	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
 	# ret,threshImg = cv2.threshold(threshImg, 0, 255, cv2.THRESH_BINARY)
@@ -203,16 +222,16 @@ def findCentroid(listofpixels):
 
 def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
 	label_img, cc_num = nd.label(img)
-	objs = nd.find_objects(label_img)
+	# objs = nd.find_objects(label_img)
 	areas = nd.sum(img, label_img, range(cc_num+1))
 
 	indices = sorted(range(len(areas)), key = lambda k: areas[k])
 
 	orderedAreas = [areas[ind] for ind in indices]
 
-	lowerThresh = orderedAreas[int((float(lowerPercentile)/100) * len(orderedAreas))]
-	if higherPercentile != 100:
-		upperThresh = orderedAreas[int((float(higherPercentile)/100) * len(orderedAreas))]
+	lowerThresh = orderedAreas[int((float(lowerPercentile)/10000) * len(orderedAreas))]
+	if higherPercentile != 10000:
+		upperThresh = orderedAreas[int((float(higherPercentile)/10000) * len(orderedAreas))]
 	else:
 		upperThresh = orderedAreas[-1]
 
@@ -227,18 +246,42 @@ def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
 
 	return label_img
 
-def adjustSizeFilter(img, lowerPercentile, higherPercentile):
-	label_img, cc_num = nd.label(img)
-	objs = nd.find_objects(label_img)
-	areas = nd.sum(img, label_img, range(cc_num+1))
+def shapeMatch(b1, b2, blob1, blob2, shape):
+	box1, dimensions1 = findBBDimensions2D(blob1)
+	box2, dimensions2 = findBBDimensions2D(blob2)
+	if 0 in dimensions1 or 0 in dimensions2:
+		return sys.maxint
+
+	img1 = np.zeros(shape, np.uint8)
+	img2 = img1.copy()
+	img1[b1] = 99999
+	img2[b2] = 99999
+	try:
+		im, contours, hierarchy = cv2.findContours(img1,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		cnt1 = contours[0]
+		im, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		cnt2 = contours[0]
+	except:
+		return sys.maxint
+
+	match = cv2.matchShapes(cnt1, cnt2, 1, 0)
+	return match
+
+def adjustSizeFilter(preLabeledImg, labeledImg, cc_num, lowerPercentile, higherPercentile, upperImg, lowerImg):
+
+	# labeledImg, cc_num = nd.label(img)
+
+	# objs = nd.find_objects(labeledImg)
+
+	areas = nd.sum(preLabeledImg, labeledImg, range(cc_num+1))
 
 	indices = sorted(range(len(areas)), key = lambda k: areas[k])
 
 	orderedAreas = [areas[ind] for ind in indices]
 
-	lowerThresh = orderedAreas[int((float(lowerPercentile)/100) * len(orderedAreas))]
-	if higherPercentile != 100:
-		upperThresh = orderedAreas[int((float(higherPercentile)/100) * len(orderedAreas))]
+	lowerThresh = orderedAreas[int((float(lowerPercentile)/10000) * len(orderedAreas))]
+	if higherPercentile != 10000:
+		upperThresh = orderedAreas[int((float(higherPercentile)/10000) * len(orderedAreas))]
 	else:
 		upperThresh = orderedAreas[-1]
 
@@ -250,30 +293,49 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
 	for i, value in enumerate(area_mask):
 		if value == True:
-			a = np.where(label_img==i)
-			label = list(zip(a[0],a[1]))
+			b = np.where(labeledImg==i)
+			label = list(zip(b[0],b[1]))
 
+			# Remove blobs from the mask if they have a blob of similar shape and location in the image above and below
+			uf = collections.Counter(upperImg[b]).most_common()
+			df = collections.Counter(lowerImg[b]).most_common()
+
+			ub = np.where(upperImg==uf[0][0])
+			db = np.where(lowerImg==df[0][0])
+
+			upperBlob = list(zip(ub[0], ub[1]))
+			lowerBlob = list(zip(db[0], db[1]))
+
+			upMatch = shapeMatch(ub, b, upperBlob, label, labeledImg.shape)
+			downMatch = shapeMatch(b, db, label, lowerBlob, labeledImg.shape)
+			upCoverage = uf[0][1]/len(label)
+			downCoverage = df[0][1]/len(label)
+
+			if upMatch < 0.2 and downMatch < 0.2 and upCoverage > 0.3 and downCoverage > 0.3:
+				area_mask[i] = False
 
 			centroid = findCentroid(label)
 
-			y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
+			y,x = np.ogrid[-centroid[0]:labeledImg.shape[0]-centroid[0], -centroid[1]:labeledImg.shape[1]-centroid[1]]
 			mask = x*x + y*y <= r*r
 
-			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[label[0]]]
+			neighborLabels = [lab for lab in np.unique(labeledImg[mask]) if lab > 0 and lab != labeledImg[label[0]]]
+
 
 			if len(neighborLabels) > minNeighborCount:
 				area_mask[i] = False
 
-	label_img[area_mask[label_img]] = 0
+
+	labeledImg[area_mask[labeledImg]] = 0
 
 
 	area_mask = (areas > upperThresh)
-	label_img[area_mask[label_img]] = 0
+	labeledImg[area_mask[labeledImg]] = 0
 
 	# print np.ndarray.dtype(label_img)
-	label_img[np.where(label_img > 0)] = 2**16
+	labeledImg[np.where(labeledImg > 0)] = 2**16
 
-	return label_img
+	return labeledImg
 
 def adjustNoise(threshImg, ks):
 	kernelImg = cv2.morphologyEx(threshImg, cv2.MORPH_OPEN, np.ones((ks,ks)))
@@ -283,16 +345,38 @@ def adjustNoise(threshImg, ks):
 	return kernelImg
 
 
-def processSlice(imgPath):
-	img = cv2.imread(imgPath, -1)
+def processSliceFirstPass(pathtup):
+	z = pathtup[0]
+	emPath = pathtup[1]
+
+	img = cv2.imread(emPath, -1)
 	img = np.uint8(img)
 	# img = cv2.bitwise_not(img)
 
 	outImg = adjustThresh(img, threshVal)
 
-	outImg = adjustNoise(outImg, p)
+	preLabeledImg = adjustNoise(outImg, p)
 
-	outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal)
+	labeledImg, cc_num = nd.label(preLabeledImg)
+
+	# For saving the output of the first pass
+	# tifffile.imsave(massFolderPath + str(os.path.basename(emPath)), preLabeledImg)
+
+	return preLabeledImg, labeledImg, cc_num, z
+
+def processSliceSecondPass(imgtup):
+	edgeCondition = imgtup[0]
+	upperImg = imgtup[1]
+	labeledImg = imgtup[2]
+	lowerImg = imgtup[3]
+	imgPath = imgtup[4]
+	preLabeledImg = imgtup[5]
+	cc_num = imgtup[6]
+
+	if edgeCondition == True:
+		outImg = adjustSizeFilterVis(labeledImg, lowerSizeVal, upperSizeVal)
+	else:
+		outImg = adjustSizeFilter(preLabeledImg, labeledImg, cc_num, lowerSizeVal, upperSizeVal, upperImg, lowerImg)
 
 	tifffile.imsave(massFolderPath + str(os.path.basename(imgPath)), outImg)
 
@@ -301,16 +385,12 @@ def processSlice(imgPath):
 def getParameters(img):
 	# img = cv2.bitwise_not(img)
 	oldThresh, threshImg = threshVis(img)
-	tifffile.imsave('afterthresh2.tif', threshImg)
+	# tifffile.imsave('afterthresh2.tif', threshImg)
 	noiseKernel, threshImg = noiseVis(threshImg)
-	tifffile.imsave('afternoise2.tif', threshImg)
+	# tifffile.imsave('afternoise2.tif', threshImg)
 	sizeRange, threshImg = sizeVis(threshImg)
-<<<<<<< HEAD
-	tifffile.imsave('threshImg.tif', threshImg)
+	# tifffile.imsave('threshImg.tif', threshImg)
 
-=======
-	
->>>>>>> 90e1dacaf9601f4c98048beb404ad634c62f3f52
 
 	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')
@@ -328,6 +408,8 @@ def applyParams(emPaths):
 	cfgfile = open("saar.ini",'r')
 	config = configparser.ConfigParser()
 	config.read('saar.ini')
+
+	firstPassPathTuples = list(zip(range(len(emPaths)), emPaths))
 
 	try:
 		global threshVal
@@ -348,10 +430,30 @@ def applyParams(emPaths):
 		print("size values not found in config file, did you set the parameters?")
 
 	pool = ThreadPool(NUMBERCORES)
-	#
-	for i, _ in enumerate(pool.imap_unordered(processSlice, emPaths), 1):
-		sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
 
+	print('First Pass:')
+	firstPassOutputStack = []
+	for i, _ in enumerate(pool.imap_unordered(processSliceFirstPass, firstPassPathTuples), 1):
+		sys.stderr.write('\rdone {0:%}'.format(i/len(firstPassPathTuples)))
+		firstPassOutputStack.append(_)
+
+	# for each in firstPassPathTuples:
+	# 	processSliceFirstPass(each)
+
+	firstPassOutputStack = [a for a in sorted(firstPassOutputStack, key = lambda x: x[3])]
+	preLabeledImgStack = [a[0] for a in firstPassOutputStack]
+	labeledImgStack = [a[1] for a in firstPassOutputStack]
+	cc_numList = [a[2] for a in firstPassOutputStack]
+
+	# for i, each in enumerate(labeledImgStack):
+	# 	tifffile.imsave('/media/curie/5TB/saarData/deleteThis/' + str(i), each)
+
+	print('\nSecond Pass:')
+	for i, _ in enumerate(pool.imap_unordered(processSliceSecondPass, prepForSecondPass(labeledImgStack, emPaths, preLabeledImgStack, cc_numList)), 1):
+		sys.stderr.write('\rdone {0:%}'.format(i/len(firstPassPathTuples)))
+
+	# for z, imgtup in enumerate(prepForSecondPass(labeledImgStack, emPaths, preLabeledImgStack, cc_numList)):
+	# 	processSliceSecondPass(imgtup)
 
 	# processedStack = pool.map(processSlice, images)
 
@@ -439,7 +541,7 @@ def calcMesh(label, meshes):
 	print(label)
 
 	indices = np.where(labelStack==label)
-	box, dimensions = findBBDimensions(indices)
+	box, dimensions = findBBDimensions3D(indices)
 	print(box)
 	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
 		print('skipped')
@@ -494,6 +596,20 @@ def generateMeshes(meshesFolderPath, labelsFolderPath):
 		end = timer()
 		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
 
+def prepForSecondPass(labeledImgStack, emPaths, preLabeledImgStack, cc_numList):
+	paramList = []
+	for z, img in enumerate(labeledImgStack):
+		if z == 0 or z == len(labeledImgStack) - 1:
+			edgeCondition = True
+			params = (edgeCondition, None, img, None, emPaths[z], preLabeledImgStack[z], cc_numList[z])
+		else:
+			edgeCondition = False
+			params = (edgeCondition, labeledImgStack[z-1], img, labeledImgStack[z+1], emPaths[z], preLabeledImgStack[z], cc_numList[z])
+
+		paramList.append(params)
+
+	return paramList
+
 def main():
 	start = timer()
 	emFolderPath = sys.argv[1]
@@ -501,6 +617,8 @@ def main():
 
 	global massFolderPath
 	massFolderPath = sys.argv[2]
+
+
 	labelsFolderPath = sys.argv[3]
 	global meshesFolderPath
 	meshesFolderPath = sys.argv[4]

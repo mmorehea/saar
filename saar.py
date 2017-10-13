@@ -33,6 +33,7 @@ threshVal = 0
 p = 0
 lowerSizeVal = 0
 upperSizeVal = 0
+blobRecoveryRadius = 0
 massFolderPath = ''
 # -----
 
@@ -68,12 +69,15 @@ def findBBDimensions(listOfPixels):
 	return [minxs-2, maxxs+2, minys-2, maxys+2, minzs-2, maxzs+2], [dx, dy, dz]
 
 def adjustThresh(originalImg, value):
+
 	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
 	kernel = np.ones((3,3),np.uint8)
 	thresh1 = cv2.dilate(thresh1, kernel, 1)
 	thresh1 = np.uint8(nd.morphology.binary_fill_holes(thresh1))
 	ret,thresh1 = cv2.threshold(thresh1, 0, 255, cv2.THRESH_BINARY)
 	thresh1 = cv2.erode(thresh1, kernel, 1)
+
+
 
 	return thresh1
 
@@ -119,7 +123,6 @@ def threshVis(img):
 			oldThresh = r
 			threshImg = adjustThresh(img, r)
 
-
 	cv2.destroyAllWindows()
 
 	return oldThresh, threshImg
@@ -155,6 +158,74 @@ def noiseVis(threshImg):
 	cv2.destroyAllWindows()
 	return oldKernel, kernelImg
 
+def adjustRecoveryRadius(intactLabelImg, lowerAreaMask, upperAreaMask, r):
+	labelImg = intactLabelImg.copy()
+	r = r * 4 # Scaling up, this is so the user can change the radius in increments of 4
+	# Remove small axons within bundles from the area mask
+	# r is the maximum distance for a blob to be considered a neighbor
+	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
+	for i, value in enumerate(lowerAreaMask):
+		if value == True:
+			a = np.where(labelImg==i)
+			label = list(zip(a[0],a[1]))
+
+
+			centroid = findCentroid(label)
+
+			y,x = np.ogrid[-centroid[0]:labelImg.shape[0]-centroid[0], -centroid[1]:labelImg.shape[1]-centroid[1]]
+			mask = x*x + y*y <= r*r
+
+			neighborLabels = [lab for lab in np.unique(labelImg[mask]) if lab > 0 and lab != labelImg[label[0]]]
+
+			if len(neighborLabels) > minNeighborCount:
+				lowerAreaMask[i] = False
+
+	labelImg[lowerAreaMask[labelImg]] = 0
+
+
+	labelImg[upperAreaMask[labelImg]] = 0
+
+	labelImg[np.where(labelImg > 0)] = 2**16
+
+	return labelImg
+
+def recoverVis(img, intactLabelImg, lowerAreaMask, upperAreaMask):
+
+	oldRadius = 0
+	r = oldRadius
+	cv2.namedWindow('image')
+
+	cv2.createTrackbar('Blob Recovery Radius', 'image', 0, 25, nothing)
+	labelImg = intactLabelImg.copy()
+
+	labelImg[lowerAreaMask[labelImg]] = 0
+
+	labelImg[upperAreaMask[labelImg]] = 0
+
+	labelImg[np.where(labelImg > 0)] = 2**16
+
+	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
+	# ret,threshImg = cv2.threshold(threshImg, 0, 255, cv2.THRESH_BINARY)
+	while(1):
+		k = cv2.waitKey(1)
+		if k == 32:
+			break
+		try:
+			cv2.imshow('image', labelImg)
+		except:
+			print('WARNING: cv2 did not read the image correctly')
+
+		# get current positions of four trackbars
+		r = cv2.getTrackbarPos('Blob Recovery Radius','image')
+
+		if (r != oldRadius):
+			oldRadius = r
+			labelImg = adjustRecoveryRadius(intactLabelImg, lowerAreaMask, upperAreaMask, r)
+
+
+	cv2.destroyAllWindows()
+	return oldRadius, labelImg
+
 def sizeVis(img):
 
 	sizeRange = [0,999]
@@ -181,11 +252,11 @@ def sizeVis(img):
 		if (lowerPercentile != sizeRange[0] or higherPercentile != sizeRange[1]):
 			sizeRange[0] = lowerPercentile
 			sizeRange[1] = higherPercentile
-			threshImg = adjustSizeFilterVis(img, lowerPercentile, higherPercentile)
+			threshImg, intactLabelImg, lowerAreaMask, upperAreaMask = adjustSizeFilterVis(img, lowerPercentile, higherPercentile)
 
 
 	cv2.destroyAllWindows()
-	return sizeRange, threshImg
+	return sizeRange, threshImg, intactLabelImg, lowerAreaMask, upperAreaMask
 
 def findCentroid(listofpixels):
 
@@ -202,9 +273,9 @@ def findCentroid(listofpixels):
 	return centroid
 
 def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
-	label_img, cc_num = nd.label(img)
-	objs = nd.find_objects(label_img)
-	areas = nd.sum(img, label_img, range(cc_num+1))
+	labelImg, cc_num = nd.label(img)
+	objs = nd.find_objects(labelImg)
+	areas = nd.sum(img, labelImg, range(cc_num+1))
 
 	indices = sorted(range(len(areas)), key = lambda k: areas[k])
 
@@ -216,21 +287,27 @@ def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
 	else:
 		upperThresh = orderedAreas[-1]
 
-	area_mask = (areas < lowerThresh)
-	label_img[area_mask[label_img]] = 0
+	intactLabelImg = labelImg.copy()
 
-	area_mask = (areas > upperThresh)
-	label_img[area_mask[label_img]] = 0
+	lowerAreaMask = (areas < lowerThresh)
+	lowerAreaMask[0] = False
+	labelImg[lowerAreaMask[labelImg]] = 0
+
+	upperAreaMask = (areas > upperThresh)
+	labelImg[upperAreaMask[labelImg]] = 0
 
 	# print np.ndarray.dtype(label_img)
-	label_img[np.where(label_img > 0)] = 2**16
+	labelImg[np.where(labelImg > 0)] = 2**16
 
-	return label_img
+	tifffile.imsave('labelImg', labelImg)
+	tifffile.imsave('intactLabelImg', intactLabelImg)
 
-def adjustSizeFilter(img, lowerPercentile, higherPercentile):
-	label_img, cc_num = nd.label(img)
-	objs = nd.find_objects(label_img)
-	areas = nd.sum(img, label_img, range(cc_num+1))
+	return labelImg, intactLabelImg, lowerAreaMask, upperAreaMask
+
+def adjustSizeFilter(img, lowerPercentile, higherPercentile, blobRecoveryRadius):
+	labelImg, cc_num = nd.label(img)
+	objs = nd.find_objects(labelImg)
+	areas = nd.sum(img, labelImg, range(cc_num+1))
 
 	indices = sorted(range(len(areas)), key = lambda k: areas[k])
 
@@ -242,38 +319,38 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile):
 	else:
 		upperThresh = orderedAreas[-1]
 
-	area_mask = (areas < lowerThresh)
-	area_mask[0] = False
+	areaMask = (areas < lowerThresh)
+	areaMask[0] = False
 
 	# Remove small axons within bundles from the area mask
-	r = 25 # maximum distance for a blob to be considered a neighbor
+	r = blobRecoveryRadius * 4 # maximum distance for a blob to be considered a neighbor
 	minNeighborCount = 5 # minimum number of neighbors to remove blob from area mask
-	for i, value in enumerate(area_mask):
+	for i, value in enumerate(areaMask):
 		if value == True:
-			a = np.where(label_img==i)
+			a = np.where(labelImg==i)
 			label = list(zip(a[0],a[1]))
 
 
 			centroid = findCentroid(label)
 
-			y,x = np.ogrid[-centroid[0]:label_img.shape[0]-centroid[0], -centroid[1]:label_img.shape[1]-centroid[1]]
+			y,x = np.ogrid[-centroid[0]:labelImg.shape[0]-centroid[0], -centroid[1]:labelImg.shape[1]-centroid[1]]
 			mask = x*x + y*y <= r*r
 
-			neighborLabels = [lab for lab in np.unique(label_img[mask]) if lab > 0 and lab != label_img[label[0]]]
+			neighborLabels = [lab for lab in np.unique(labelImg[mask]) if lab > 0 and lab != labelImg[label[0]]]
 
 			if len(neighborLabels) > minNeighborCount:
-				area_mask[i] = False
+				areaMask[i] = False
 
-	label_img[area_mask[label_img]] = 0
+	labelImg[areaMask[labelImg]] = 0
 
 
-	area_mask = (areas > upperThresh)
-	label_img[area_mask[label_img]] = 0
+	areaMask = (areas > upperThresh)
+	labelImg[areaMask[labelImg]] = 0
 
-	# print np.ndarray.dtype(label_img)
-	label_img[np.where(label_img > 0)] = 2**16
+	# print np.ndarray.dtype(labelImg)
+	labelImg[np.where(labelImg > 0)] = 2**16
 
-	return label_img
+	return labelImg
 
 def adjustNoise(threshImg, ks):
 	kernelImg = cv2.morphologyEx(threshImg, cv2.MORPH_OPEN, np.ones((ks,ks)))
@@ -292,7 +369,7 @@ def processSlice(imgPath):
 
 	outImg = adjustNoise(outImg, p)
 
-	outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal)
+	outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal, blobRecoveryRadius)
 
 	tifffile.imsave(massFolderPath + str(os.path.basename(imgPath)), outImg)
 
@@ -302,10 +379,14 @@ def getParameters(img):
 	# img = cv2.bitwise_not(img)
 	oldThresh, threshImg = threshVis(img)
 	# tifffile.imsave('afterthresh2.tif', threshImg)
+
 	noiseKernel, threshImg = noiseVis(threshImg)
 	# tifffile.imsave('afternoise2.tif', threshImg)
-	sizeRange, threshImg = sizeVis(threshImg)
+
+	sizeRange, threshImg, intactLabelImg, lowerAreaMask, upperAreaMask = sizeVis(threshImg)
 	# tifffile.imsave('threshImg.tif', threshImg)
+
+	blobRecoveryRadius, threshImg = recoverVis(threshImg, intactLabelImg, lowerAreaMask, upperAreaMask)
 
 
 	print("Writing configuration file...")
@@ -316,6 +397,7 @@ def getParameters(img):
 	Config.set('Options','Remove Noise Kernel Size', str(noiseKernel))
 	Config.set('Options','Filter Size Lower Bound', str(sizeRange[0]))
 	Config.set('Options','Filter Size Upper Bound', str(sizeRange[1]))
+	Config.set('Options','Blob Recovery Radius', str(blobRecoveryRadius))
 	Config.write(cfgfile)
 	cfgfile.close()
 
@@ -342,12 +424,20 @@ def applyParams(emPaths):
 		upperSizeVal = int(config.get('Options', 'Filter Size Upper Bound'))
 	except:
 		print("size values not found in config file, did you set the parameters?")
+	try:
+		global blobRecoveryRadius
+		blobRecoveryRadius = int(config.get('Options', 'Blob Recovery Radius'))
+
+	except:
+		print("recovery radius value not found in config file, did you set the parameters?")
 
 	pool = ThreadPool(NUMBERCORES)
 	#
 	for i, _ in enumerate(pool.imap_unordered(processSlice, emPaths), 1):
 		sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
 
+	# for each in emPaths:
+	# 	processSlice(each)
 
 	# processedStack = pool.map(processSlice, images)
 
@@ -505,6 +595,35 @@ def main():
 	img = cv2.imread(em, 0)
 	img = np.uint8(img)
 
+	emImg = img.copy()
+
+	th3 = cv2.adaptiveThreshold(emImg.copy(),255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,191,2)
+	labelImg, cc_num = nd.label(th3)
+	tifffile.imsave('xxxxxxxxx', labelImg)
+
+	areas = nd.sum(th3, labelImg, range(cc_num+1))
+
+	indices = sorted(range(len(areas)), key = lambda k: areas[k])
+
+	orderedAreas = [areas[ind] for ind in indices]
+
+	lowerAreaMask = (areas < 650)
+	lowerAreaMask[0] = False
+	labelImg[lowerAreaMask[labelImg]] = 0
+	# cv2.imshow('l',labelImg)
+	# cv2.waitKey()
+	tifffile.imsave('yyyyyyyyy', labelImg)
+	code.interact(local=locals())
+	for label in range(cc_num+1)[1:]:
+		b = np.where(labelImg == label)
+
+		blank = np.zeros(labelImg.shape, np.uint8)
+		blank[b] = 99999
+
+		# im, contours,hierarchy = cv2.findContours(blank, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+
+
 	while True:
 		print("SAAR MENU")
 		print("1. Set Parameters")
@@ -512,7 +631,7 @@ def main():
 		print("\t3. Apply Parameters to Whole Stack")
 		print("\t4. Connected Components Labeling")
 		print("\t5. Filter Labels by Size (for easier meshing)")
-		print("6. Generate Meshes (use multiMesh3 for now)")
+		print("6. Generate Meshes (use vol2mesh for now)")
 		print("7. Separate False Merges (not ready yet)")
 		print("8. Quit")
 		choice = input(">")

@@ -23,6 +23,8 @@ from multiprocessing.dummy import Pool as ThreadPool
 import threading
 import pickle
 import math
+import matplotlib.pyplot as plt
+import queue
 
 # from mass.py
 NUMBERCORES = multiprocessing.cpu_count()
@@ -68,16 +70,25 @@ def findBBDimensions(listOfPixels):
 
 	return [minxs-2, maxxs+2, minys-2, maxys+2, minzs-2, maxzs+2], [dx, dy, dz]
 
-def adjustThresh(originalImg, value):
+def adjustThresh(originalImg, globalValue):
+	# adaptiveValue = adaptiveValue*2 + 1 # Only odd numbers allowed
 
-	ret,thresh1 = cv2.threshold(originalImg, int(value), 255, cv2.THRESH_BINARY)
+
+	ret,thresh1 = cv2.threshold(originalImg, int(globalValue), 255, cv2.THRESH_BINARY)
 	kernel = np.ones((3,3),np.uint8)
 	thresh1 = cv2.dilate(thresh1, kernel, 1)
 	thresh1 = np.uint8(nd.morphology.binary_fill_holes(thresh1))
 	ret,thresh1 = cv2.threshold(thresh1, 0, 255, cv2.THRESH_BINARY)
 	thresh1 = cv2.erode(thresh1, kernel, 1)
 
-
+	# Adaptive threshold, doesn't seem to help much
+	# code.interact(local=locals())
+	# originalImg[np.where(thresh1==0)] = 0
+	# if adaptiveValue > 1:
+	# 	thresh2 = cv2.adaptiveThreshold(originalImg,255,cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY,int(adaptiveValue),2)
+	# else:
+	# 	thresh2=thresh1
+	# labelImg, cc_num = nd.label(thresh2)
 
 	return thresh1
 
@@ -105,7 +116,7 @@ def threshVis(img):
 	cv2.namedWindow('image')
 
 	# create trackbars for picking threshold
-	cv2.createTrackbar('Threshold', 'image', 0, 255, nothing)
+	cv2.createTrackbar('Global Threshold', 'image', 0, 255, nothing)
 	threshImg = img
 	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
 	while(1):
@@ -118,10 +129,10 @@ def threshVis(img):
 			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
-		r = cv2.getTrackbarPos('Threshold','image')
-		if (r != oldThresh):
-			oldThresh = r
-			threshImg = adjustThresh(img, r)
+		g = cv2.getTrackbarPos('Global Threshold','image')
+		if (g != oldThresh):
+			oldThresh = g
+			threshImg = adjustThresh(img.copy(), g)
 
 	cv2.destroyAllWindows()
 
@@ -298,9 +309,6 @@ def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
 
 	# print np.ndarray.dtype(label_img)
 	labelImg[np.where(labelImg > 0)] = 2**16
-
-	tifffile.imsave('labelImg', labelImg)
-	tifffile.imsave('intactLabelImg', intactLabelImg)
 
 	return labelImg, intactLabelImg, lowerAreaMask, upperAreaMask
 
@@ -576,7 +584,7 @@ def generateMeshes(meshesFolderPath, labelsFolderPath):
 	print("Loaded data...")
 
 	for i, itm in enumerate(itemlist):
-		calcMesh(itm, meshes)
+		calcMesh(itm, meshesFolderPath)
 		end = timer()
 		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
 
@@ -594,35 +602,6 @@ def main():
 	em = emPaths[0]
 	img = cv2.imread(em, 0)
 	img = np.uint8(img)
-
-	emImg = img.copy()
-
-	th3 = cv2.adaptiveThreshold(emImg.copy(),255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,191,2)
-	labelImg, cc_num = nd.label(th3)
-	tifffile.imsave('xxxxxxxxx', labelImg)
-
-	areas = nd.sum(th3, labelImg, range(cc_num+1))
-
-	indices = sorted(range(len(areas)), key = lambda k: areas[k])
-
-	orderedAreas = [areas[ind] for ind in indices]
-
-	lowerAreaMask = (areas < 650)
-	lowerAreaMask[0] = False
-	labelImg[lowerAreaMask[labelImg]] = 0
-	# cv2.imshow('l',labelImg)
-	# cv2.waitKey()
-	tifffile.imsave('yyyyyyyyy', labelImg)
-	code.interact(local=locals())
-	for label in range(cc_num+1)[1:]:
-		b = np.where(labelImg == label)
-
-		blank = np.zeros(labelImg.shape, np.uint8)
-		blank[b] = 99999
-
-		# im, contours,hierarchy = cv2.findContours(blank, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-
 
 	while True:
 		print("SAAR MENU")

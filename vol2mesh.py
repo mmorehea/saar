@@ -76,11 +76,13 @@ def calcMeshWithCrop(stackname, labelStack, location, simplify, tags):
 	subprocess.call(s, shell=True)
 
 def calcMesh(stackname, labelStack, location, simplify, box):
+	#code.interact(local=locals())
 	labelStack = np.swapaxes(labelStack, 0, 2)
 	print("Building mesh...")
-	vertices, normals, faces = march(labelStack, 3)  # 3 smoothing rounds
+	vertices, normals, faces = march(labelStack, 0)  # 3 smoothing rounds
 
 	print('preparing vertices and faces...')
+	#code.interact(local=locals())
 	vertStrings = ["v %.3f %.3f %.3f \n" % ((box[0]*10) + ((i[0]-1)*10.0) + 456.0, (box[2]*10) + ((i[1]-1)*10.0) + 456.0, (box[4]*5.454545) + ((i[2]-1)*5.454545)) for i in vertices]
 	faceStrings = ["f %d %d %d \n" % (face[2]+1, face[1]+1, face[0]+1) for face in faces]
 	with open(location + os.path.basename(stackname) +".obj", 'w') as f:
@@ -113,8 +115,10 @@ def calcMeshWithOffsets(stackname, labelStack, location, simplify, tags):
 
 	labelStack = np.swapaxes(labelStack, 0, 2)
 	print("Building mesh...")
-	vertices, normals, faces = march(labelStack, 3)  # 3 smoothing rounds
-
+	try:
+		vertices, normals, faces = march(labelStack, 3)  # 3 smoothing rounds
+	except:
+		return
 	print('preparing vertices and faces...')
 	newVerts = [[((xOffset + i[0]) * downsampleFactor),  ((yOffset + i[1]) * downsampleFactor), ((zOffset + i[2]) * downsampleFactor)] for i in vertices]
 	vertStrings = ["v %.3f %.3f %.3f \n" % (i[0], i[1], i[2]) for i in newVerts]
@@ -183,50 +187,52 @@ def main():
 	alreadyDone = glob.glob(meshes + "*.obj")
 	alreadyDone = [int(os.path.basename(i)[:-4]) for i in alreadyDone]
 
-	labelsFolderPath = sys.argv[1]
 
-	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
+	stack = sys.argv[1]
 	#code.interact(local=locals())
-	for ii,stack in enumerate(labelsPaths):
-		#if os.path.basename(stack) in alreadyDone:
-		#	print("Detected already processed file. Skipping.")
-		#	print("[Delete file in output folder to reprocess.]")
-		#	continue
-		print("Starting " + stack)
-		labelStack = tifffile.imread(stack)
-		labelStack = np.dstack(labelStack)
-		#code.interact(local=locals())
-		#tags = getTagDictionary(stack)
-		#labelStack = np.dstack(labelStack)
-		print("Loaded data stack " + str(ii) + "/" + str(len(labelsPaths)))
-		print("Thresholding...")
 
-		with open ('outfile.npy', 'rb') as fp:
-			itemlist = np.load(fp)
-			itemlist = itemlist[10:]
-		itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
-		
+	#if os.path.basename(stack) in alreadyDone:
+	#	print("Detected already processed file. Skipping.")
+	#	print("[Delete file in output folder to reprocess.]")
+	#	continue
 
-		print("Found labels...")
-		print("firstlabel: " + str(itemlist[0]))
-		print("Number of labels", str(len(itemlist)))
-		#code.interact(local=locals())
-		for i, itm in enumerate(itemlist):
-			indices = np.where(labelStack==itm)
-			try:
-				box, dimensions = findBBDimensions(indices)
-			except: code.interact(local=locals())
-			print(box)
+	print("Starting " + stack)
+	labelStack = tifffile.imread(stack)
+	#labelStack = np.dstack(labelStack)
+	#code.interact(local=locals())
+	#tags = getTagDictionary(stack)
+	#labelStack = np.dstack(labelStack)
+	print("Loaded data stack ")
+
+	with open ('outfile.npy', 'rb') as fp:
+		itemlist = np.load(fp)
+		itemlist = itemlist[1:]
+	itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
 
 
-			window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
-			localIndices = np.where(window==itm)
-			blankImg = np.zeros(window.shape, dtype=bool)
-			blankImg[localIndices] = 1
-			blankImg = np.pad(blankImg, (1,1), 'constant', constant_values=0)
-			#blankImg = np.dsplit(blankImg)
+	print("Found labels...")
+	print("firstlabel: " + str(itemlist[0]))
+	print("Number of labels", str(len(itemlist)))
+	#code.interact(local=locals())
+	for i, itm in enumerate(itemlist):
+		indices = np.where(labelStack==itm)
+		if len(indices[0]) < 10:
+			continue
+		try:
+			box, dimensions = findBBDimensions(indices)
+		except:
+			code.interact(local=locals())
+		print(box)
 
-			calcMesh(str(itm), blankImg, meshes, simplify, box)
+
+		window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
+		localIndices = np.where(window==itm)
+		blankImg = np.zeros(window.shape, dtype=bool)
+		blankImg[localIndices] = 1
+		blankImg = np.pad(blankImg, (1,1), 'constant', constant_values=0)
+		#blankImg = np.dsplit(blankImg)
+
+		calcMesh(str(itm), blankImg, meshes, simplify, box)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import glob
 import code
 import tifffile
 import threading
-#from marching_cubes import march
+from marching_cubes import march
 from timeit import default_timer as timer
 import configparser
 from scipy import ndimage as nd
@@ -25,17 +25,18 @@ import pickle
 import math
 import matplotlib.pyplot as plt
 import queue
+import ast
 
 # from mass.py
 NUMBERCORES = multiprocessing.cpu_count()
 print("Found " + str(NUMBERCORES) + " number of cores. Using " + str(NUMBERCORES - 1) + ".")
 NUMBERCORES -= 1
 
-threshVal = 0
-p = 0
-lowerSizeVal = 0
-upperSizeVal = 0
-blobRecoveryRadius = 0
+threshVals = []
+pVals = []
+lowerSizeVals = []
+upperSizeVals = []
+blobRecoveryRadii = []
 massFolderPath = ''
 # -----
 
@@ -111,12 +112,12 @@ def adjustContours(kernelImg, kernelSize):
 def nothing(x):
     pass
 
-def threshVis(img):
+def threshVis(img, z):
 	oldThresh = 200
-	cv2.namedWindow('image')
+	cv2.namedWindow('image at z=' + str(z))
 
 	# create trackbars for picking threshold
-	cv2.createTrackbar('Global Threshold', 'image', 0, 255, nothing)
+	cv2.createTrackbar('Global Threshold', 'image at z=' + str(z), 0, 255, nothing)
 	threshImg = img
 	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
 	while(1):
@@ -124,12 +125,12 @@ def threshVis(img):
 		if k == 32:
 			break
 		try:
-			cv2.imshow('image', threshImg)
+			cv2.imshow('image at z=' + str(z), threshImg)
 		except:
 			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
-		g = cv2.getTrackbarPos('Global Threshold','image')
+		g = cv2.getTrackbarPos('Global Threshold','image at z=' + str(z))
 		if (g != oldThresh):
 			oldThresh = g
 			threshImg = adjustThresh(img.copy(), g)
@@ -138,25 +139,25 @@ def threshVis(img):
 
 	return oldThresh, threshImg
 
-def noiseVis(threshImg):
+def noiseVis(threshImg, z):
 	oldKernel = 2
 	ks = oldKernel
-	cv2.namedWindow('image')
+	cv2.namedWindow('image at z=' + str(z))
 	threshImg = np.uint8(threshImg)
 
 	kernelImg = np.uint8(threshImg)
 	# kernelImg = cv2.resize(kernelImg, (950*2, 750*2))
-	cv2.createTrackbar('Kernel Size for Noise Removal', 'image', 1, 10, nothing)
+	cv2.createTrackbar('Kernel Size for Noise Removal', 'image at z=' + str(z), 1, 10, nothing)
 	while(1):
 		k = cv2.waitKey(1)
 		if k == 32:
 			break
 		try:
-			cv2.imshow('image', kernelImg)
+			cv2.imshow('image at z=' + str(z), kernelImg)
 
 		except:
 			print('WARNING: cv2 did not read the image correctly')
-		ks = cv2.getTrackbarPos('Kernel Size for Noise Removal', 'image')
+		ks = cv2.getTrackbarPos('Kernel Size for Noise Removal', 'image at z=' + str(z))
 		# get current positions of four trackbars
 
 		if (ks != oldKernel):
@@ -169,8 +170,8 @@ def noiseVis(threshImg):
 	cv2.destroyAllWindows()
 	return oldKernel, kernelImg
 
-def adjustRecoveryRadius(intactLabelImg, lowerAreaMask, upperAreaMask, r):
-	labelImg = intactLabelImg.copy()
+def adjustRecoveryRadius(originalImg, lowerAreaMask, upperAreaMask, r):
+	labelImg = originalImg
 	r = r * 4 # Scaling up, this is so the user can change the radius in increments of 4
 	# Remove small axons within bundles from the area mask
 	# r is the maximum distance for a blob to be considered a neighbor
@@ -200,13 +201,13 @@ def adjustRecoveryRadius(intactLabelImg, lowerAreaMask, upperAreaMask, r):
 
 	return labelImg
 
-def recoverVis(img, intactLabelImg, lowerAreaMask, upperAreaMask):
+def recoverVis(img, intactLabelImg, lowerAreaMask, upperAreaMask, z):
 
 	oldRadius = 0
 	r = oldRadius
-	cv2.namedWindow('image')
+	cv2.namedWindow('image at z=' + str(z))
 
-	cv2.createTrackbar('Blob Recovery Radius', 'image', 0, 25, nothing)
+	cv2.createTrackbar('Blob Recovery Radius', 'image at z=' + str(z), 0, 25, nothing)
 	labelImg = intactLabelImg.copy()
 
 	labelImg[lowerAreaMask[labelImg]] = 0
@@ -222,28 +223,28 @@ def recoverVis(img, intactLabelImg, lowerAreaMask, upperAreaMask):
 		if k == 32:
 			break
 		try:
-			cv2.imshow('image', labelImg)
+			cv2.imshow('image at z=' + str(z), labelImg)
 		except:
 			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
-		r = cv2.getTrackbarPos('Blob Recovery Radius','image')
+		r = cv2.getTrackbarPos('Blob Recovery Radius','image at z=' + str(z))
 
 		if (r != oldRadius):
 			oldRadius = r
-			labelImg = adjustRecoveryRadius(intactLabelImg, lowerAreaMask, upperAreaMask, r)
+			labelImg = adjustRecoveryRadius(intactLabelImg.copy(), lowerAreaMask.copy(), upperAreaMask, r)
 
 
 	cv2.destroyAllWindows()
 	return oldRadius, labelImg
 
-def sizeVis(img):
+def sizeVis(img, z):
 
 	sizeRange = [0,999]
-	cv2.namedWindow('image')
+	cv2.namedWindow('image at z=' + str(z))
 
-	cv2.createTrackbar('Lowest Size Percentile', 'image', 0, 1000, nothing)
-	cv2.createTrackbar('Highest Size Percentile', 'image', 999, 1000, nothing)
+	cv2.createTrackbar('Lowest Size Percentile', 'image at z=' + str(z), 0, 1000, nothing)
+	cv2.createTrackbar('Highest Size Percentile', 'image at z=' + str(z), 999, 1000, nothing)
 	threshImg = img
 	# threshImg = cv2.resize(threshImg, (950*2, 750*2))
 	# ret,threshImg = cv2.threshold(threshImg, 0, 255, cv2.THRESH_BINARY)
@@ -252,13 +253,13 @@ def sizeVis(img):
 		if k == 32:
 			break
 		try:
-			cv2.imshow('image', threshImg)
+			cv2.imshow('image at z=' + str(z), threshImg)
 		except:
 			print('WARNING: cv2 did not read the image correctly')
 
 		# get current positions of four trackbars
-		lowerPercentile = cv2.getTrackbarPos('Lowest Size Percentile','image')
-		higherPercentile = cv2.getTrackbarPos('Highest Size Percentile','image')
+		lowerPercentile = cv2.getTrackbarPos('Lowest Size Percentile','image at z=' + str(z))
+		higherPercentile = cv2.getTrackbarPos('Highest Size Percentile','image at z=' + str(z))
 
 		if (lowerPercentile != sizeRange[0] or higherPercentile != sizeRange[1]):
 			sizeRange[0] = lowerPercentile
@@ -310,7 +311,7 @@ def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
 	# print np.ndarray.dtype(label_img)
 	labelImg[np.where(labelImg > 0)] = 2**16
 
-	return labelImg, intactLabelImg, lowerAreaMask, upperAreaMask
+	return labelImg
 
 def adjustSizeFilter(img, lowerPercentile, higherPercentile, blobRecoveryRadius):
 	labelImg, cc_num = nd.label(img)
@@ -369,43 +370,54 @@ def adjustNoise(threshImg, ks):
 
 
 def processSlice(imgPath):
-	img = cv2.imread(imgPath, -1)
+	img = cv2.imread(imgPath[0], -1)
 	img = np.uint8(img)
 	# img = cv2.bitwise_not(img)
 
-	outImg = adjustThresh(img, threshVal)
+	outImg = adjustThresh(img, imgPath[1])
 
-	outImg = adjustNoise(outImg, p)
+	outImg = adjustNoise(outImg, imgPath[2])
 
-	outImg = adjustSizeFilter(outImg, lowerSizeVal, upperSizeVal, blobRecoveryRadius)
+	outImg = adjustSizeFilterVis(outImg, imgPath[3], imgPath[4])
 
-	tifffile.imsave(massFolderPath + str(os.path.basename(imgPath)), outImg)
+	tifffile.imsave(massFolderPath + str(os.path.basename(imgPath[0])), outImg)
 
 	return outImg
 
-def getParameters(img):
-	# img = cv2.bitwise_not(img)
-	oldThresh, threshImg = threshVis(img)
-	# tifffile.imsave('afterthresh2.tif', threshImg)
+def getParameters(emPaths, sampleIndices):
+	sampleImgs = []
+	for index in sampleIndices:
+		sampleImgs.append(np.uint8(cv2.imread(emPaths[index], -1)))
 
-	noiseKernel, threshImg = noiseVis(threshImg)
-	# tifffile.imsave('afternoise2.tif', threshImg)
+	threshDict = {}
+	noiseDict = {}
+	sizeDict = {}
+	recoveryDict = {}
+	for i, img in enumerate(sampleImgs):
+		oldThresh, threshImg = threshVis(img, sampleIndices[i])
+		# tifffile.imsave('afterthresh2.tif', threshImg)
 
-	sizeRange, threshImg, intactLabelImg, lowerAreaMask, upperAreaMask = sizeVis(threshImg)
-	# tifffile.imsave('threshImg.tif', threshImg)
+		noiseKernel, threshImg = noiseVis(threshImg, sampleIndices[i])
+		# tifffile.imsave('afternoise2.tif', threshImg)
 
-	blobRecoveryRadius, threshImg = recoverVis(threshImg, intactLabelImg, lowerAreaMask, upperAreaMask)
+		sizeRange, threshImg, intactLabelImg, lowerAreaMask, upperAreaMask = sizeVis(threshImg, sampleIndices[i])
+		# tifffile.imsave('threshImg.tif', threshImg)
 
+		blobRecoveryRadius, threshImg = recoverVis(threshImg, intactLabelImg, lowerAreaMask, upperAreaMask, sampleIndices[i])
+
+		threshDict[sampleIndices[i]] = oldThresh
+		noiseDict[sampleIndices[i]] = noiseKernel
+		sizeDict[sampleIndices[i]] = sizeRange
+		recoveryDict[sampleIndices[i]] = blobRecoveryRadius
 
 	print("Writing configuration file...")
 	cfgfile = open("saar.ini",'w')
 	Config = configparser.ConfigParser()
 	Config.add_section('Options')
-	Config.set('Options','Threshold Value', str(oldThresh))
-	Config.set('Options','Remove Noise Kernel Size', str(noiseKernel))
-	Config.set('Options','Filter Size Lower Bound', str(sizeRange[0]))
-	Config.set('Options','Filter Size Upper Bound', str(sizeRange[1]))
-	Config.set('Options','Blob Recovery Radius', str(blobRecoveryRadius))
+	Config.set('Options','Threshold Value', str(threshDict))
+	Config.set('Options','Remove Noise Kernel Size', str(noiseDict))
+	Config.set('Options','Filter Size Range', str(sizeDict))
+	Config.set('Options','Blob Recovery Radius', str(recoveryDict))
 	Config.write(cfgfile)
 	cfgfile.close()
 
@@ -416,61 +428,142 @@ def applyParams(emPaths):
 	config.read('saar.ini')
 
 	try:
-		global threshVal
-		threshVal = int(config.get('Options', 'Threshold Value'))
+		threshDict = ast.literal_eval(config.get('Options', 'Threshold Value'))
+		threshInterp = np.interp(list(range(len(emPaths))),list(threshDict.keys()),list(threshDict.values()))
+		global threshVals
+		threshVals = [int(round(i)) for i in threshInterp]
 	except:
 		print("threshVal not found in config file, did you set the parameters?")
 	try:
-		global p
-		p = int(config.get('Options', 'Remove Noise Kernel Size'))
+		pDict = ast.literal_eval(config.get('Options', 'Remove Noise Kernel Size'))
+		pInterp = np.interp(list(range(len(emPaths))),list(pDict.keys()),list(pDict.values()))
+		global pVals
+		pVals = [int(round(i)) for i in pInterp]
 	except:
 		print("kernel value not found in config file, did you set the parameters?")
 	try:
-		global lowerSizeVal
-		lowerSizeVal = int(config.get('Options', 'Filter Size Lower Bound'))
-		global upperSizeVal
-		upperSizeVal = int(config.get('Options', 'Filter Size Upper Bound'))
+		sizeDict = ast.literal_eval(config.get('Options', 'Filter Size Range'))
+		lowerSizeInterp = np.interp(list(range(len(emPaths))),list(sizeDict.keys()),[s[0] for s in list(sizeDict.values())])
+		global lowerSizeVals
+		lowerSizeVals = [int(round(i)) for i in lowerSizeInterp]
+		upperSizeInterp = np.interp(list(range(len(emPaths))),list(sizeDict.keys()),[s[1] for s in list(sizeDict.values())])
+		global upperSizeVals
+		upperSizeVals = [int(round(i)) for i in upperSizeInterp]
 	except:
 		print("size values not found in config file, did you set the parameters?")
 	try:
-		global blobRecoveryRadius
-		blobRecoveryRadius = int(config.get('Options', 'Blob Recovery Radius'))
-
+		recoveryDict = ast.literal_eval(config.get('Options', 'Blob Recovery Radius'))
+		blobRecoveryInterp = np.interp(list(range(len(emPaths))),list(recoveryDict.keys()),list(recoveryDict.values()))
+		global blobRecoveryRadii
+		blobRecoveryRadii = [int(round(i)) for i in blobRecoveryInterp]
 	except:
 		print("recovery radius value not found in config file, did you set the parameters?")
 
+	emPathsWithParameters = [[path, threshVals[i], pVals[i], lowerSizeVals[i], upperSizeVals[i], blobRecoveryRadii[i]] for i, path in enumerate(emPaths)]
 	pool = ThreadPool(NUMBERCORES)
 	#
-	for i, _ in enumerate(pool.imap_unordered(processSlice, emPaths), 1):
+	for i, _ in enumerate(pool.imap_unordered(processSlice, emPathsWithParameters), 1):
 		sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
 
-	# for each in emPaths:
-	# 	processSlice(each)
+	#for each in emPathsWithParameters:
+	#	processSlice(each)
+
+
 
 	# processedStack = pool.map(processSlice, images)
 
 	# print "time, mass, single: " + str(timer() - start)
 	return emImages
 
+def dilateLabels(image):
+	name = image[0]
+	img = image[1]
+	labelsFolderPath = image[2]
+	threshPaths = image[3]
+	new = np.zeros(img.shape, dtype=np.uint32)
+	labels = np.unique(img)
+	kernel = np.ones((3,3), np.uint8)
+	for label in labels:
+		pixels = np.where(img == label)
+		if len(pixels[0]) < 5:
+			continue
+		blank = np.zeros(img.shape)
+		blank[pixels] = 1
+		blank = cv2.dilate(blank, kernel, iterations=2)
+		pixels = np.where(blank == 1)
+		new[pixels] = label
+
+	tifffile.imsave(labelsFolderPath + str(os.path.basename(name)), new)
+
+
 def connectedComponents(massFolderPath, labelsFolderPath):
 
 	threshPaths = sorted(glob.glob(massFolderPath +'*.tif*'))
 
-	images = [cv2.imread(threshPaths[z], -1) for z in range(len(threshPaths))]
+	kernel = np.ones((3,3),np.uint8)
+	alreadyDone = glob.glob(labelsFolderPath + "*.tif*")
+	images = [cv2.erode(cv2.imread(threshPaths[z], -1), kernel, 2) for z in range(len(threshPaths))]
+
+
 	print("loaded")
 	images = np.dstack(images)
 	print("stacked")
-
 
 	label_img, number = nd.measurements.label(images)
 
 	images = np.uint32(label_img)
 
+	images = [(threshPaths[z], images[:,:,z], labelsFolderPath, threshPaths) for z in range(len(threshPaths))]
 
-	for each in range(images.shape[2]):
-		print(each)
-		img = images[:,:,each]
-		tifffile.imsave(labelsFolderPath + str(os.path.basename(threshPaths[each])), img)
+	pool = ThreadPool(NUMBERCORES)
+	for i, _ in enumerate(pool.imap_unordered(dilateLabels, images), 1):
+		sys.stderr.write('\rdone {0:%}'.format(i/len(images)))
+
+	# for each in range(len(alreadyDone), images.shape[2]):
+	# 	print(each)
+	# 	img = images[:,:,each]
+	# 	new = np.zeros(img.shape, dtype=np.uint32)
+	# 	labels = np.unique(img)
+	# 	for label in labels:
+	# 		pixels = np.where(img == label)
+	# 		if len(pixels[0]) < 5:
+	# 			continue
+	# 		blank = np.zeros(img.shape)
+	# 		blank[pixels] = 1
+	# 		blank = cv2.dilate(blank, kernel, iterations=2)
+	# 		pixels = np.where(blank == 1)
+	# 		new[pixels] = label
+	#
+	# 	tifffile.imsave(labelsFolderPath + str(os.path.basename(threshPaths[each])), new)
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+def modifiedConnectedComponents(massFolderPath, labelsFolderPath):
+
+	threshPaths = sorted(glob.glob(massFolderPath +'*.tif*'))
+
+	images = [cv2.imread(threshPaths[z], -1) for z in range(len(threshPaths))]
+
+	ii = 0
+	for value in chunks(images, 100):
+		print(ii)
+		print("loaded")
+		images = np.dstack(value)
+		print("stacked")
+
+		label_img, number = nd.measurements.label(images)
+
+		images = np.uint16(label_img)
+
+
+		for each in range(images.shape[2]):
+			print(each + ii)
+			img = images[:,:,each]
+			tifffile.imsave(labelsFolderPath + str(os.path.basename(threshPaths[each+ ii])), img)
+		ii += images.shape[2]
 
 def trackSize(labelStack, axis, start, minLabelSize):
 	tracker = {}
@@ -531,11 +624,11 @@ def makeItemList(labelsFolderPath, minLabelSize):
 
 def calcMesh(label, meshes):
 	print(label)
-
+	#code.interact(local=locals())
 	indices = np.where(labelStack==label)
 	box, dimensions = findBBDimensions(indices)
 	print(box)
-	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
+	if dimensions[0] > 500 or dimensions[1] > 500 or dimensions[2] > 500:
 		print('skipped')
 		return
 
@@ -544,10 +637,12 @@ def calcMesh(label, meshes):
 	blankImg = np.zeros(window.shape, dtype=bool)
 	blankImg[localIndices] = 1
 	try:
-		vertices, normals, faces = march(blankImg.transpose(), 1)  # zero smoothing rounds
+		vertices, normals, faces = march(blankImg.transpose(), 0)  # zero smoothing rounds
+		print("success on mesh")
 	except:
+		print("failed")
 		return
-
+	print("writing")
 	with open(meshes + str(label)+".obj", 'w') as f:
 		f.write("# OBJ file\n")
 		for v in vertices:
@@ -588,6 +683,13 @@ def generateMeshes(meshesFolderPath, labelsFolderPath):
 		end = timer()
 		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
 
+def getSampleIndices(n,numSamples):
+	numPartitions = numSamples - 1
+	increment = int(round(n/numPartitions))
+	indices = [increment*a for a in range(numSamples)]
+	indices[-1] = n
+	return indices
+
 def main():
 	start = timer()
 	emFolderPath = sys.argv[1]
@@ -599,9 +701,9 @@ def main():
 	global meshesFolderPath
 	meshesFolderPath = sys.argv[4]
 
-	em = emPaths[0]
-	img = cv2.imread(em, 0)
-	img = np.uint8(img)
+	numberOfSamples = 3
+
+	sampleIndices = getSampleIndices(len(emPaths)-1,numberOfSamples)
 
 	while True:
 		print("SAAR MENU")
@@ -615,7 +717,7 @@ def main():
 		print("8. Quit")
 		choice = input(">")
 		if choice=='1':
-			getParameters(img)
+			getParameters(emPaths, sampleIndices)
 		elif choice=='2':
 			print("Enter a minimum label size:")
 			minLabelSize = int(input(">"))

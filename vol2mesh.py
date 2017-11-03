@@ -223,6 +223,9 @@ def main():
 		except:
 			code.interact(local=locals())
 		print(box)
+		if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
+			print('skipped')
+			continue
 
 
 		window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]

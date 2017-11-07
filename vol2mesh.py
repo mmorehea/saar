@@ -75,7 +75,7 @@ def calcMeshWithCrop(stackname, labelStack, location, simplify, tags):
 	print(s)
 	subprocess.call(s, shell=True)
 
-def calcMesh(stackname, labelStack, location, simplify, box):
+def calcMesh(stackname, labelStack, location, simplify):
 	#code.interact(local=locals())
 	labelStack = np.swapaxes(labelStack, 0, 2)
 	print("Building mesh...")
@@ -83,7 +83,7 @@ def calcMesh(stackname, labelStack, location, simplify, box):
 
 	print('preparing vertices and faces...')
 	#code.interact(local=locals())
-	vertStrings = ["v %.3f %.3f %.3f \n" % ((box[0]*10) + ((i[0]-1)*10.0) + 456.0, (box[2]*10) + ((i[1]-1)*10.0) + 456.0, (box[4]*5.454545) + ((i[2]-1)*5.454545)) for i in vertices]
+	vertStrings = ["v %.3f %.3f %.3f \n" % (i[0]-1,i[1]-1,i[2]-1) for i in vertices]
 	faceStrings = ["f %d %d %d \n" % (face[2]+1, face[1]+1, face[0]+1) for face in faces]
 	with open(location + os.path.basename(stackname) +".obj", 'w') as f:
 		f.write("# OBJ file\n")
@@ -208,8 +208,8 @@ def main():
 		itemlist = np.load(fp)
 		itemlist = itemlist[1:]
 	itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
-
-
+	#itemlist = np.unique(labelStack)[1:]
+	print(itemlist)
 	print("Found labels...")
 	print("firstlabel: " + str(itemlist[0]))
 	print("Number of labels", str(len(itemlist)))
@@ -218,24 +218,15 @@ def main():
 		indices = np.where(labelStack==itm)
 		if len(indices[0]) < 10:
 			continue
-		try:
-			box, dimensions = findBBDimensions(indices)
-		except:
-			code.interact(local=locals())
-		print(box)
-		if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
-			print('skipped')
-			continue
-
-
-		window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
-		localIndices = np.where(window==itm)
-		blankImg = np.zeros(window.shape, dtype=bool)
-		blankImg[localIndices] = 1
-		blankImg = np.pad(blankImg, (1,1), 'constant', constant_values=0)
+		print("cloning")
+		blankImg = np.zeros(labelStack.shape)
+		print("labeling")
+		blankImg[indices] = 1
+		#print("padding")
+		#blankImg = np.pad(blankImg, (1,1), 'constant', constant_values=0)
 		#blankImg = np.dsplit(blankImg)
-
-		calcMesh(str(itm), blankImg, meshes, simplify, box)
+		print("running mesh")
+		calcMesh(str(itm), blankImg, meshes, simplify)
 
 
 if __name__ == "__main__":

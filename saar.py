@@ -67,7 +67,7 @@ def findBBDimensions(listOfPixels):
 	dy = maxys - minys
 	dz = maxzs - minzs
 
-	return [minxs-2, maxxs+2, minys-2, maxys+2, minzs-2, maxzs+2], [dx, dy, dz]
+	return [minxs, maxxs+1, minys, maxys+1, minzs, maxzs+1], [dx, dy, dz]
 
 def nothing(x):
     pass
@@ -149,13 +149,15 @@ def modifiedConnectedComponents(massFolderPath, labelsFolderPath):
 			tifffile.imsave(labelsFolderPath + str(os.path.basename(threshPaths[each+ ii])), img)
 		ii += images.shape[2]
 
-def calcMesh(label, meshes):
+def calcMesh(label, meshes, labelStack):
+	# label = meshData[0]
+	# meshes = meshData[1]
 	print(label)
 	#code.interact(local=locals())
 	indices = np.where(labelStack==label)
 	box, dimensions = findBBDimensions(indices)
 	print(box)
-	if dimensions[0] > 500 or dimensions[1] > 500 or dimensions[2] > 500:
+	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
 		print('skipped')
 		return
 
@@ -163,26 +165,26 @@ def calcMesh(label, meshes):
 	localIndices = np.where(window==label)
 	blankImg = np.zeros(window.shape, dtype=bool)
 	blankImg[localIndices] = 1
-	try:
-		vertices, normals, faces = march(blankImg.transpose(), 0)  # zero smoothing rounds
-		print("success on mesh")
-	except:
-		print("failed")
-		return
-	print("writing")
-	with open(meshes + str(label)+".obj", 'w') as f:
+
+	print("Building mesh...")
+	vertices, normals, faces = march(blankImg.transpose(), 0)  # 3 smoothing rounds
+
+	print('preparing vertices and faces...')
+	#code.interact(local=locals())
+	vertStrings = ["v %.3f %.3f %.3f \n" % ((box[0]) + ((i[0]-1)), (box[2]) + (i[1]-1), (box[4]) + (i[2]-1)) for i in vertices]
+	faceStrings = ["f %d %d %d \n" % (face[2]+1, face[1]+1, face[0]+1) for face in faces]
+	print(meshes + str(label) +".obj")
+	with open(meshes + str(label) +".obj", 'w') as f:
 		f.write("# OBJ file\n")
-		for v in vertices:
-			f.write("v %.2f %.2f %.2f \n" % ((box[0] * SCALEX) + (v[2] * SCALEX) + XOFFSET, (box[2] * SCALEY) + (v[1] * SCALEY) + YOFFSET, (box[4] * SCALEZ) + v[0] * 5.454545))
-		for n in normals:
-			f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
-		for face in faces:
-			f.write("f %d %d %d \n" % (face[0]+1, face[1]+1, face[2]+1))
+
+		print("writing vertices...")
+		f.write(''.join(vertStrings))
+		#for n in normals:
+		#	f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
+		print("writing faces...")
+		f.write(''.join(faceStrings))
 
 def generateMeshes(meshesFolderPath, labelsFolderPath):
-	start = timer()
-	q = queue.Queue()
-
 	alreadyDone = glob.glob(meshesFolderPath + "*.obj")
 
 	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
@@ -190,7 +192,7 @@ def generateMeshes(meshesFolderPath, labelsFolderPath):
 
 	with open ('outfile.npy', 'rb') as fp:
 		itemlist = np.load(fp)
-		itemlist = itemlist[10:] # Why is this?
+		itemlist = itemlist[1:]
 
 	itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
 
@@ -198,16 +200,27 @@ def generateMeshes(meshesFolderPath, labelsFolderPath):
 	print("firstlabel: " + str(itemlist[0]))
 	print("Number of labels", str(len(itemlist)))
 
+
+
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
-	global labelStack
+	#global labelStack
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 	labelStack = np.dstack(labelStack)
+	labelStack = np.swapaxes(labelStack, 0, 2)
 	print("Loaded data...")
 
+	code.interact(local=locals())
+
+	#pool = ThreadPool(NUMBERCORES)
+	#meshData = [[itm, meshesFolderPath] for itm in itemlist]
+
+	#for i, _ in enumerate(pool.imap_unordered(calcMesh, meshData), 1):
+	#	sys.stderr.write('\rdone {0:%}'.format(i/len(meshData)))
+
 	for i, itm in enumerate(itemlist):
-		calcMesh(itm, meshesFolderPath)
+		calcMesh(itm, meshesFolderPath, labelStack)
 		end = timer()
-		print(str(i+1) + "/" + str(len(itemlist)) + " time: " + str(end-start))
+		print(str(i+1) + "/" + str(len(itemlist)))
 
 def trackSize(labelStack, axis, start, minLabelSize):
 	# Track the sizes of labels in the stack along a particular axis

@@ -233,8 +233,7 @@ def processSlice(imgPath):
 
 	outImg = adjustThresh(img, imgPath[1])
 	outImg = adjustNoise(outImg, imgPath[2])
-	outImg = adjustSizeFilterVis(outImg, imgPath[3], imgPath[4])
-
+	outImg, intactLabelImg, lowerAreaMask, upperAreaMask = adjustSizeFilterVis(outImg, imgPath[3], imgPath[4])
 	tifffile.imsave(massFolderPath + str(os.path.basename(imgPath[0])), outImg)
 
 	return outImg
@@ -282,8 +281,11 @@ def applyParams(emPaths):
 	emPathsWithParameters = [[path, threshVals[i], pVals[i], lowerSizeVals[i], upperSizeVals[i], blobRecoveryRadii[i]] for i, path in enumerate(emPaths)]
 	pool = ThreadPool(NUMBERCORES)
 
-	for i, _ in enumerate(pool.imap_unordered(processSlice, emPathsWithParameters), 1):
-		sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
+	# for i, _ in enumerate(pool.imap_unordered(processSlice, emPathsWithParameters), 1):
+	# 	sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
+
+	for each in emPathsWithParameters:
+		processSlice(each)
 
 	return emImages
 
@@ -392,7 +394,7 @@ def adjustSizeFilterVis(img, lowerPercentile, higherPercentile):
 
 	labelImg[np.where(labelImg > 0)] = 2**16
 
-	return labelImg
+	return labelImg, intactLabelImg, lowerAreaMask, upperAreaMask
 
 def sizeVis(img, z):
 	# Trackbar allows user to set range for size filter and view the results in real time, space bar confirms value

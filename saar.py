@@ -281,11 +281,8 @@ def applyParams(emPaths):
 	emPathsWithParameters = [[path, threshVals[i], pVals[i], lowerSizeVals[i], upperSizeVals[i], blobRecoveryRadii[i]] for i, path in enumerate(emPaths)]
 	pool = ThreadPool(NUMBERCORES)
 
-	# for i, _ in enumerate(pool.imap_unordered(processSlice, emPathsWithParameters), 1):
-	# 	sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
-
-	for each in emPathsWithParameters:
-		processSlice(each)
+	for i, _ in enumerate(pool.imap_unordered(processSlice, emPathsWithParameters), 1):
+		sys.stderr.write('\rdone {0:%}'.format(i/len(emPaths)))
 
 	return emImages
 

@@ -50,6 +50,7 @@ meshesFolderPath = []
 # -----
 
 def findBBDimensions(listOfPixels):
+	# Find the dimensions of the bounding box for a list of pixels
 	xs = listOfPixels[0]
 	ys = listOfPixels[1]
 	zs = listOfPixels[2]
@@ -73,6 +74,7 @@ def nothing(x):
     pass
 
 def adjustSizeFilter(img, lowerPercentile, higherPercentile, blobRecoveryRadius):
+	# Perform size filter followed by blob recovery, currently not called by anything
 	labelImg, cc_num = nd.label(img)
 	objs = nd.find_objects(labelImg)
 	areas = nd.sum(img, labelImg, range(cc_num+1))
@@ -119,108 +121,6 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile, blobRecoveryRadius)
 	labelImg[np.where(labelImg > 0)] = 2**16
 
 	return labelImg
-
-def chunks(l, n):
-    """Yield successive n-sized chunks from l."""
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
-
-def modifiedConnectedComponents(massFolderPath, labelsFolderPath):
-
-	threshPaths = sorted(glob.glob(massFolderPath +'*.tif*'))
-
-	images = [cv2.imread(threshPaths[z], -1) for z in range(len(threshPaths))]
-
-	ii = 0
-	for value in chunks(images, 100):
-		print(ii)
-		print("loaded")
-		images = np.dstack(value)
-		print("stacked")
-
-		label_img, number = nd.measurements.label(images)
-
-		images = np.uint16(label_img)
-
-
-		for each in range(images.shape[2]):
-			print(each + ii)
-			img = images[:,:,each]
-			tifffile.imsave(labelsFolderPath + str(os.path.basename(threshPaths[each+ ii])), img)
-		ii += images.shape[2]
-
-def calcMesh(label, meshes, labelStack):
-	# label = meshData[0]
-	# meshes = meshData[1]
-	print(label)
-	#code.interact(local=locals())
-	indices = np.where(labelStack==label)
-	box, dimensions = findBBDimensions(indices)
-	print(box)
-	if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:
-		print('skipped')
-		return
-
-	window = labelStack[box[0]:box[1], box[2]:box[3], box[4]:box[5]]
-	localIndices = np.where(window==label)
-	blankImg = np.zeros(window.shape, dtype=bool)
-	blankImg[localIndices] = 1
-
-	print("Building mesh...")
-	vertices, normals, faces = march(blankImg.transpose(), 0)  # 3 smoothing rounds
-
-	print('preparing vertices and faces...')
-	#code.interact(local=locals())
-	vertStrings = ["v %.3f %.3f %.3f \n" % ((box[0]) + ((i[0]-1)), (box[2]) + (i[1]-1), (box[4]) + (i[2]-1)) for i in vertices]
-	faceStrings = ["f %d %d %d \n" % (face[2]+1, face[1]+1, face[0]+1) for face in faces]
-	print(meshes + str(label) +".obj")
-	with open(meshes + str(label) +".obj", 'w') as f:
-		f.write("# OBJ file\n")
-
-		print("writing vertices...")
-		f.write(''.join(vertStrings))
-		#for n in normals:
-		#	f.write("vn %.2f %.2f %.2f \n" % (n[2], n[1], n[0]))
-		print("writing faces...")
-		f.write(''.join(faceStrings))
-
-def generateMeshes(meshesFolderPath, labelsFolderPath):
-	alreadyDone = glob.glob(meshesFolderPath + "*.obj")
-
-	alreadyDone = sorted([int(os.path.basename(i)[:-4]) for i in alreadyDone])
-	print(alreadyDone)
-
-	with open ('outfile.npy', 'rb') as fp:
-		itemlist = np.load(fp)
-		itemlist = itemlist[1:]
-
-	itemlist = sorted([itm for itm in itemlist if itm not in alreadyDone])
-
-	print("Found labels...")
-	print("firstlabel: " + str(itemlist[0]))
-	print("Number of labels", str(len(itemlist)))
-
-
-
-	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
-	#global labelStack
-	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
-	labelStack = np.dstack(labelStack)
-	labelStack = np.swapaxes(labelStack, 0, 2)
-	print("Loaded data...")
-
-	code.interact(local=locals())
-
-	#pool = ThreadPool(NUMBERCORES)
-	#meshData = [[itm, meshesFolderPath] for itm in itemlist]
-
-	#for i, _ in enumerate(pool.imap_unordered(calcMesh, meshData), 1):
-	#	sys.stderr.write('\rdone {0:%}'.format(i/len(meshData)))
-
-	for i, itm in enumerate(itemlist):
-		calcMesh(itm, meshesFolderPath, labelStack)
-		end = timer()
-		print(str(i+1) + "/" + str(len(itemlist)))
 
 def trackSize(labelStack, axis, start, minLabelSize):
 	# Track the sizes of labels in the stack along a particular axis

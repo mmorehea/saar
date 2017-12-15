@@ -571,9 +571,28 @@ def main():
 			# Any label smaller than this size will be eliminated in makeItemList
 			# Recommended value: 150
 			minLabelSize = int(input(">"))
+
+			start = timer()
 			emImages = applyParams(emPaths)
+			applyParamsTime = timer() - start
+
+			with open('timeData.txt', 'w') as f:
+				f.write('time to apply parameters: ' + str(applyParamsTime))
+
+			start = timer()
 			connectedComponents(massFolderPath, labelsFolderPath)
+			connectedComponentsTime = timer() - start
+
+			with open('timeData.txt', 'a') as f:
+				f.write('time to apply connected components: ' + str(connectedComponentsTime))
+
+			start = timer()
 			makeItemList(labelsFolderPath, minLabelSize)
+			makeItemListTime = timer() - start
+
+			with open('timeData.txt', 'a') as f:
+				f.write('time to make item list: ' + str(makeItemListTime))
+
 		elif choice=='3':
 			emImages = applyParams(emPaths)
 		elif choice=='4':

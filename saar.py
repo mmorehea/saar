@@ -570,6 +570,7 @@ def main():
 			print("Enter a minimum label size:")
 			# Any label smaller than this size will be eliminated in makeItemList
 			# Recommended value: 150
+			# 27 Feb 2018: used value of 50 because we wanted to get more meshes for the syGlass connection step
 			minLabelSize = int(input(">"))
 
 			start = timer()

@@ -215,6 +215,7 @@ def main():
 	print("Number of labels", str(len(itemlist)))
 	#code.interact(local=locals())
 	for i, itm in enumerate(itemlist):
+		print(itm)
 		print(str(i) + '/' + str(len(itemlist)))
 		indices = np.where(labelStack==itm)
 		if len(indices[0]) < 10:

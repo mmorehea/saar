@@ -122,8 +122,10 @@ def adjustSizeFilter(img, lowerPercentile, higherPercentile, blobRecoveryRadius)
 
 	return labelImg
 
-def trackSize(labelStack, axis, start, minLabelSize):
+def trackSize(labelStack, axis, start):
 	# Track the sizes of labels in the stack along a particular axis
+	# minLabelSizeAllDirections is the smallest size a label must exceed in all dimensions in order to be included in the item list 
+	minLabelSizeAllDirections = 25
 	tracker = {}
 	for i in range(labelStack.shape[axis]):
 		end = timer()
@@ -142,7 +144,7 @@ def trackSize(labelStack, axis, start, minLabelSize):
 		for each in list(tracker):
 			tracker[each][2] += 1
 			if tracker[each][2] > 25:
-				if tracker[each][1] - tracker[each][0] < minLabelSize:
+				if tracker[each][1] - tracker[each][0] < minLabelSizeAllDirections:
 					tracker.pop(each)
 
 		for itm in idList:
@@ -153,28 +155,42 @@ def trackSize(labelStack, axis, start, minLabelSize):
 				if i > tracker[itm][1]:
 					tracker[itm][1] = i + 1
 					tracker[itm][2] = 0
+	finalDict = {}
+	for t in tracker.keys():
+		length = tracker[t][1] - tracker[t][0]
+		if length > minLabelSizeAllDirections:
+			finalDict[t] = length
 
-	finalList = [t for t in tracker.keys() if tracker[t][1] - tracker[t][0] > minLabelSize]
+	return finalDict, finalDict.keys()
 
-	return finalList
-
-def makeItemList(labelsFolderPath, minLabelSize):
+def makeItemList(labelsFolderPath, minLabelSizeOneDirection):
 	# Makes a list of all the labels in the stack bigger than a given size, saves it to a numpy file to be used for meshing
+	# minLabelSizeOneDirection is the smallest size a label must be in at least one direction in order to be included in the list
 	start = timer()
 	labelsPaths = sorted(glob.glob(labelsFolderPath +'*.tif*'))
+	
 	labelStack = [tifffile.imread(labelsPaths[z]) for z in range(len(labelsPaths))]
 
 	labelStack = np.dstack(labelStack)
-
+	
 	print("X Direction...")
-	finalListX = trackSize(labelStack, 0, start, minLabelSize)
+	sizeDictX, keysX = trackSize(labelStack, 0, start)
 	print("Y Direction...")
-	finalListY = trackSize(labelStack, 1, start, minLabelSize)
+	sizeDictY, keysY = trackSize(labelStack, 1, start)
 	print("Z Direction...")
-	finalListZ = trackSize(labelStack, 2, start, minLabelSize)
-
-	finalList = list(set(finalListX) | set(finalListY) | set(finalListZ))
-
+	sizeDictZ, keysZ = trackSize(labelStack, 2, start)
+	
+	keys = list(set(keysX) & set(keysY) & set(keysZ))
+	
+	finalList = [] 
+	for key in keys:
+		xLength = sizeDictX[key]
+		yLength = sizeDictY[key]
+		zLength = sizeDictZ[key]
+		if xLength > minLabelSizeOneDirection or yLength > minLabelSizeOneDirection or zLength > minLabelSizeOneDirection:
+			finalList.append(key)
+	
+	print(len(finalList))
 	np.save('outfile.npy', finalList)
 
 def dilateLabels(image):

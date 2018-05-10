@@ -57,7 +57,7 @@ for i, prop in enumerate(properties):
 
 		count += 1
 
-		if (i+1) % 10 == 0:
+		if (i+1) % 100 == 0:
 			startPoint = i + 1
 			pickle.dump((rows, startPoint, count), open('featureSave.p', 'wb'))
 		

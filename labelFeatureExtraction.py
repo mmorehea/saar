@@ -25,19 +25,22 @@ with open('outfile.npy','rb') as fp:
 
 properties = regionprops(labelStack, emStack)
 
-
-rows = np.asarray([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 16, 17, 18])
+rows = []
 startPoint = 0
 count = 1
 
 if os.path.exists('featureSave.p'):
 	with open('featureSave.p', 'rb') as pickleFile:
-   		rows, startPoint, count = pickle.load(pickleFile)
+   		startPoint, count = pickle.load(pickleFile)
 
 
 start = timer()
 for i, prop in enumerate(properties):
 	if i < startPoint:
+		continue
+
+	# Skipping the 50th label for now because it's particularly huge and takes forever to process
+	if i == 49:
 		continue
 
 	print(str(i+1) + '/' + str(len(properties)))
@@ -50,25 +53,32 @@ for i, prop in enumerate(properties):
 		for x, item in enumerate(newRow):
 			if type(item) is tuple:
 				del newRow[x]
-				newRow[x:x] = [item[i] for i in range(len(item))]
+				newRow[x:x] = [item[q] for q in range(len(item))]
 		
-		rows = np.vstack((rows, newRow))
+		if len(rows) == 0:
+			rows = np.array(newRow)
+		else:
+			rows = np.vstack((rows, newRow))
 
 
 		count += 1
 
-		if (i+1) % 100 == 0:
-			startPoint = i + 1
-			pickle.dump((rows, startPoint, count), open('featureSave.p', 'wb'))
-		
+	if (i+1) % 100 == 0:
+		with open('labelFeatures.csv', 'a') as ff:
+			writer = csv.writer(ff)
+			writer.writerows(rows)
+		startPoint = i + 1
+		rows = []
+		print('saving...')
+		pickle.dump((startPoint, count), open('featureSave.p', 'wb'))
+	elif i + 1 == len(properties):
+		with open('labelFeatures.csv', 'a') as ff:
+			writer = csv.writer(ff)
+			writer.writerows(rows)
 
 
 end = timer()
 print(end-start)
 
-
-with open('labelFeatures.csv', 'w') as ff:
-	writer = csv.writer(ff)
-	writer.writerows(rows)
 
 

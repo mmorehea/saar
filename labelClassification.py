@@ -14,18 +14,24 @@ from sklearn import svm
 
 
 rows = []
-with open('labelFeatures.csv') as ff:
+with open('labelFeatures900.csv') as ff:
 	reader = csv.reader(ff, delimiter=',', quotechar=',', quoting=csv.QUOTE_MINIMAL)
 	for row in reader:
 		rows.append([float(x) for x in row])	
 
-code.interact(local=locals())
+Xtrain = np.array(rows[:int(len(rows)/2)])
 
-X = rows[:int(len(rows))/2]
-y = rows[int(len(rows))/2:]
+classLabels = ['Good', 'Bad', 'Merge', 'Split']
+y = np.random.choice(classLabels, Xtrain.shape[0])
 
 clf = svm.SVC()
 
-clf.fit(X,y)
+clf.fit(Xtrain,y)
+
+Xtest = np.array(rows[int(len(rows)/2):])
+
+result = clf.predict(Xtest)
+
+code.interact(local=locals())
 
 

@@ -62,7 +62,9 @@ for i, prop in enumerate(properties):
 
 
 		count += 1
-
+	if (i+1) % 300 == 0:
+		del properties
+		properties = regionprops(labelStack, emStack)
 	if (i+1) % 100 == 0:
 		with open('labelFeatures.csv', 'a') as ff:
 			writer = csv.writer(ff)

@@ -584,7 +584,7 @@ def main():
 		if choice=='1':
 			getParameters(emPaths, sampleIndices)
 		elif choice=='2':
-			print("Enter a minimum label size:")
+
 			# Any label smaller than this size will be eliminated in makeItemList
 			# Recommended value: 150
 			# 27 Feb 2018: used value of 50 because we wanted to get more meshes for the syGlass connection step
@@ -616,7 +616,7 @@ def main():
 		elif choice=='4':
 			connectedComponents(massFolderPath, labelsFolderPath)
 		elif choice=='5':
-			print("Enter a minimum label size:")
+
 			minLabelSize = 25
 			makeItemList(labelsFolderPath, minLabelSize)
 		elif choice=='6':

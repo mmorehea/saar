@@ -191,6 +191,7 @@ def makeItemList(labelsFolderPath, minLabelSizeOneDirection):
 			finalList.append(key)
 	
 	print(len(finalList))
+	code.interact(local=locals())
 	np.save('outfile.npy', finalList)
 
 def dilateLabels(image):
@@ -587,7 +588,7 @@ def main():
 			# Any label smaller than this size will be eliminated in makeItemList
 			# Recommended value: 150
 			# 27 Feb 2018: used value of 50 because we wanted to get more meshes for the syGlass connection step
-			minLabelSize = int(input(">"))
+			minLabelSize = 25
 
 			start = timer()
 			emImages = applyParams(emPaths)
@@ -616,7 +617,7 @@ def main():
 			connectedComponents(massFolderPath, labelsFolderPath)
 		elif choice=='5':
 			print("Enter a minimum label size:")
-			minLabelSize = int(input(">"))
+			minLabelSize = 25
 			makeItemList(labelsFolderPath, minLabelSize)
 		elif choice=='6':
 			generateMeshes(meshesFolderPath, labelsFolderPath)

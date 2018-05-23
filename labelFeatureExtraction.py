@@ -18,10 +18,8 @@ intensity = sys.argv[2]
 labelStack = tifffile.imread(labels).astype(int)
 emStack = tifffile.imread(intensity).astype(int)
 
-with open('outfile.npy','rb') as fp:
-	itemlist = np.load(fp)
-	itemlist = itemlist[1:]
-
+meshNames = glob.glob('/media/curie/5TB/saarData/meshes_final_decimated/*.obj')
+itemlist = [float(each.split('/')[-1][:-4]) for each in meshNames]
 
 properties = regionprops(labelStack, emStack)
 
@@ -39,9 +37,6 @@ for i, prop in enumerate(properties):
 	if i < startPoint:
 		continue
 
-	# Skipping the 50th label for now because it's particularly huge and takes forever to process
-	if i == 49:
-		continue
 
 	print(str(i+1) + '/' + str(len(properties)))
 	if prop.label in itemlist:
@@ -65,18 +60,29 @@ for i, prop in enumerate(properties):
 	if (i+1) % 300 == 0:
 		del properties
 		properties = regionprops(labelStack, emStack)
-	if (i+1) % 100 == 0:
+	if (i+1) % 100 == 0 and len(rows) > 0:
+
+		# If rows is not a 2-D array (only one row found), make it a 2-D array so csv writer can work
+		if len(rows.shape) == 1:
+			rows = np.reshape(rows, (1, 18))
+
 		with open('labelFeatures.csv', 'a') as ff:
 			writer = csv.writer(ff)
 			writer.writerows(rows)
+
 		startPoint = i + 1
 		rows = []
 		print('saving...')
 		pickle.dump((startPoint, count), open('featureSave.p', 'wb'))
-	elif i + 1 == len(properties):
+	elif i + 1 == len(properties) and len(rows) > 0:
+
+		if len(rows.shape) == 1:
+			rows = np.reshape(rows, (1, 18))
+
 		with open('labelFeatures.csv', 'a') as ff:
 			writer = csv.writer(ff)
 			writer.writerows(rows)
+
 
 
 end = timer()

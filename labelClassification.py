@@ -25,7 +25,7 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-
+from shutil import copy2
 
 
 rows = []
@@ -56,7 +56,9 @@ unknownData = [row for row in rows if int(row[0]) not in classDict.keys()]
 target = np.array([classDict[int(each[0])] for each in data])
 
 # Eliminate the first column since it is the label ID
+labelIDS = [row[0] for row in data]
 data = [row[1:] for row in data]
+unknownLabelIDs = [row[0] for row in unknownData]
 unknownData = [row[1:] for row in unknownData]
 
 # Eliminate bbox coordinates
@@ -83,6 +85,17 @@ clf.fit(data,target)
 unknownData = lda.transform(unknownData)
 predictions = clf.predict(unknownData)
 
+# Get all the label IDs for the good axons
+goodAxonsFromMining = [each for i, each in enumerate(minedLabels) if labelClasses[i] == 4]
+goodAxonsFromClassification = [each for i, each in enumerate(unknownLabelIDs) if predictions[i] == 4]
+
+meshPaths = glob.glob('/media/curie/5TB/saarData/meshes_final_decimated/*.obj')
+for each in meshPaths:
+	label = float(each.split('/')[-1][:-4])
+	if label in goodAxonsFromMining:
+		copy2(each, './goodAxonsFromMining')
+	if label in goodAxonsFromClassification:
+		copy2(each, './goodAxonsFromClassification')
 code.interact(local=locals())
 
 # Notes

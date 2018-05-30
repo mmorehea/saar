@@ -189,7 +189,7 @@ def main():
 
 
 	stack = sys.argv[1]
-	#code.interact(local=locals())
+
 
 	#if os.path.basename(stack) in alreadyDone:
 	#	print("Detected already processed file. Skipping.")
@@ -199,7 +199,6 @@ def main():
 	print("Starting " + stack)
 	labelStack = tifffile.imread(stack)
 	#labelStack = np.dstack(labelStack)
-	#code.interact(local=locals())
 	#tags = getTagDictionary(stack)
 	#labelStack = np.dstack(labelStack)
 	print("Loaded data stack ")
@@ -208,12 +207,15 @@ def main():
 		itemlist = np.load(fp)
 		itemlist = itemlist[1:]
 	itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
-	#itemlist = np.unique(labelStack)[1:]
+
+
+	itemlist = np.unique(labelStack)[1:]
+
 	print(itemlist)
 	print("Found labels...")
 	print("firstlabel: " + str(itemlist[0]))
 	print("Number of labels", str(len(itemlist)))
-	#code.interact(local=locals())
+
 	for i, itm in enumerate(itemlist):
 		print(itm)
 		print(str(i) + '/' + str(len(itemlist)))

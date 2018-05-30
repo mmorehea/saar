@@ -191,7 +191,6 @@ def makeItemList(labelsFolderPath, minLabelSizeOneDirection):
 			finalList.append(key)
 	
 	print(len(finalList))
-	code.interact(local=locals())
 	np.save('outfile.npy', finalList)
 
 def dilateLabels(image):

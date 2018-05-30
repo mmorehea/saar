@@ -1,9 +1,8 @@
-#!/bin/bash
+#! /bin/bash
 # restart labelFeatureExtraction.py when it crashes
 
-while [ 1 ]
-do uptime
-killall python labelFeatureExtraction.py /media/curie/5TB/saarData/labels_finaltest_stacked/labels_finaltest.tif /media/curie/5TB/saarData/labels_finaltest_stacked/emMended.tif
-psg httpd | wc
-sleep 30
+until killall -9 python; python labelFeatureExtraction.py /media/curie/5TB/saarData/labels_finaltest_flipped_stacked/labels_finaltest_flipped.tif /media/curie/5TB/saarData/labels_finaltest_flipped_stacked/emMended.tif
+do
+	sleep 1
+	echo "Restarting program..."
 done

@@ -184,12 +184,14 @@ def getTagDictionary(stack):
 def main():
 	meshes = sys.argv[2]
 	simplify = sys.argv[3]
-	alreadyDone = glob.glob(meshes + "*.obj")
-	alreadyDone = [int(os.path.basename(i)[:-4]) for i in alreadyDone]
+	# alreadyDone = glob.glob(meshes + "*.obj")
+	# alreadyDone = [int(os.path.basename(i)[:-4]) for i in alreadyDone]
 
 
 	stack = sys.argv[1]
 
+
+	# labelStack = np.dstack(stack)
 
 	#if os.path.basename(stack) in alreadyDone:
 	#	print("Detected already processed file. Skipping.")
@@ -198,6 +200,8 @@ def main():
 
 	print("Starting " + stack)
 	labelStack = tifffile.imread(stack)
+
+
 	#labelStack = np.dstack(labelStack)
 	#tags = getTagDictionary(stack)
 	#labelStack = np.dstack(labelStack)
@@ -206,7 +210,7 @@ def main():
 	with open ('outfile.npy', 'rb') as fp:
 		itemlist = np.load(fp)
 		itemlist = itemlist[1:]
-	itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
+	# itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
 
 
 	itemlist = np.unique(labelStack)[1:]

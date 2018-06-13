@@ -78,12 +78,12 @@ def combinePartsAndSave(vertexMatrix, faces, pathToSave):
 	return None
 
 def main():
-	# meshesPaths = glob.glob('goodAxons/goodAxonsFromClassification/*.obj') + glob.glob('goodAxons/goodAxonsFromMining/*.obj')
-	# outDir = 'goodAxons_aligned/'
-	meshesPaths = glob.glob('deleteThis1/*.obj')
-	outDir = 'deleteThis2/'
-	xScaling, yScaling, zScaling = (10.0, -10.0, 5.45454)
-	xTrans, yTrans, zTrans = (550.0, 13100.0, 0.0)
+	meshesPaths = glob.glob('goodAxons/goodAxonsFromClassification/*.obj') + glob.glob('goodAxons/goodAxonsFromMining/*.obj')
+	outDir = 'goodAxons_aligned2/'
+	# meshesPaths = glob.glob('deleteThis1/*.obj')
+	# outDir = 'deleteThis2/'
+	xScaling, yScaling, zScaling = (10.0, 10.0, 5.45454)
+	xTrans, yTrans, zTrans = (545.0, 545.0, 0.0)
 	rotAlpha, rotBeta, rotGamma = (0.0, 0.0, 0.0)
 	invertFaces = xScaling * yScaling * zScaling / abs(xScaling * yScaling * zScaling)
 	

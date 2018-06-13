@@ -31,6 +31,7 @@ def findBBDimensions(listOfPixels):
 	ys = listOfPixels[1]
 	zs = listOfPixels[2]
 
+
 	minxs = min(xs)
 	maxxs = max(xs)
 
@@ -50,6 +51,7 @@ def calcMesh(label, meshes):
 	print(label)
 
 	indices = np.where(labelStack==label)
+	#code.interact(local=dict(globals(), **locals())) 
 	box, dimensions = findBBDimensions(indices)
 	print(box)
 	# if dimensions[0] > 500 and dimensions[1] > 500 and dimensions[2] > 500:

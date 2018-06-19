@@ -1,106 +1,58 @@
-# saar
+# Saar
+<p>Saar takes an EM image stack and produces .obj mesh files for axons contained in the volume. An interface is provided for specifying segmentation parameters while previewing the results of each selection.</p>
 
-## Pipeline
+<h3>If you use Saar, please cite:<h3>
 
-- Run getParameters.py to allow user to set intensity threshold, kernel for noise removal, and size threshold. Note than when increasing the lower size threshold, small axons within bundles will disappear in the UI but they will not in the final product; this is just to make the UI faster and easier to use.
-- Run mass.py to apply these parameters to the entire stack and create initial mask (takes about 2.5 hours for emMended/)
-- Run clusterSaarFindLabels.py to do connected components and create the individual labels
-- Run makeItemList.py to create a list for mesh creation that excludes labels that are too small
-- Run multiMesh3.py to create the meshes 
+# Requirements
+<h3>Software:</h3>
+<p>Python 3<br>
+Marching Cubes</P>
 
-# Old readme:
-## To Do
-- find the meshable labels before the end of the pipeline, remember them, and make meshes for only those.
-- superimpose the labels with their colors over the EM for easier proofreading.
+<h3>Python dependencies:</h3>
+<p>SciPy (https://www.scipy.org/)<br>
+<p>tifffile.py (https://www.lfd.uci.edu/~gohlke/code/tifffile.py.html)<br>
+<p>scikit-image (http://scikit-image.org/docs/dev/api/skimage.html)<br>
+<p>Python OpenCV (https://pypi.org/project/opencv-python/)</p>
 
-## The Pipeline
+# Usage
 
-### 1. GUI that shows the user the top image in the original EM stack and allows him/her to set the thresholding and contouring parameters that will be applied to the entire stack. Settings saved in a config file.
+<h3>To run:</h3>
+<p>Open a terminal or command window, navigate to the Saar directory, and type:<br><br>
+<i>python saar.py emFolder/ emptyFolder1/ emptyfolder2/ destinationFolder/</i><br><br>
+<p>Where 'emFolder' contains a sequence of EM tiff images, the two empty folders will hold the thresholded and labeled images respectively for intermediate steps, and 'destinationFolder' will contain the the resulting meshes.<br></p>
 
-- #### getParamaters.py
-  **inputs**: original EM image stack, user input  
-  **outputs**: config file  
-  Allows the user to set up the thresholding and contouring parameters using a GUI that displays the top image of the stack, and saves the parameters to a config file.
+<h3>Main Menu</h3>
+<p>Saar first presents the user with a main menu, allowing the user to start from any of the main steps in the segmentation process. For the first time, it is recommended that these each be done in order.</p><br>
 
-- #### getThreshold.py, mass.py
-  Outdated scripts that together make up the old version of getParameters.py.
+<h3>Set Parameters</h3>
+<p>This step presents the the user with a series of trackbars allowing them to set a series of parameters used for segmentation. These trackbars are accompanied by a sample image from the volume allowing the user to preview the effects of changing the parameter. Each parameter is set 3 times, once for each third of the image stack. The parameters include:<br><br>
+<b>Threshold Value:</b> Yields a binary image. The regions with intensity above the threshold value are set to 1, and the remaining regions are set to 0. This should be adjusted until the axons are clearly delineated but not too diminished.<br>
+<b>Remove Noise Kernel Size:</b> The optimal kernel size for noise removal will vary depending on the image resolution. This should be adjusted to remove the most noise while minimizing distortion to the image.<br>
+<b>Filter Size Range:</b> This specifies a percentile range for objects in the image to be removed based on their area in pixels. This should be set to remove the most noise while removing as few axons as possible.<br>
+<b>Blob Recovery Radius:</b> This setting applies an algorithm to recover some of the axons that may have been lost during the size filtering step. Usually this can be set to 0, but it may helpful for some image stacks.</p><br>
 
-### 2. Generate the labels using the appropriate threshold and contour parameters from config. Clean them individually via dilation and erosion.
+<h3>Apply Parameters to Whole Stack</h3>
+<p>After parameterization, Saar saves the parameters to a file called 'Saar.ini'. This step applies the parameters to each image in the stack, saving the results to the first empty folder specified. The user can then view the stack in image software such as ImageJ and, if needed, adjust the parameters and re-run this step.</p><br>
 
-- #### clusterSaarCleanLabels.py
- **inputs**: uncleaned labels  
- **outputs**: cleaned labels in the folder "clean/"  
- Multithreaded version of cleanLabels.py.
+<h3>Connected Component Labeling</h3>
+<p>In this step, Saar labels the image stack according to connected components</p><br>
 
-- #### clusterSaarContour.py
- **inputs**: config file, path to thresholded EM data in folder "thresh"  
- **outputs**: contoured images saved to the folder "contour/"  
- Using multithreading, finds the contours of each thresholded slice and applies cv2 morphology close to clean them.
- 
-- #### clusterSaarFindLabels.py
- **inputs**: cleaned EM image stack in the folder "cleaned/"  
- **ouptuts**: labeled EM image stack in the folder "cleanedLabels32/"  
- Takes the cleaned EM stack and applies nd.measurements.label to extract all the labels in the array.
+<h3>Filter Labels by Size</h3>
+<p>Most of the labels produced by connected components are too small to be useful. This step scans the volume and makes a list of the labels that are bigger than a user-specified size threshold. Values in the range of 50-200 are typically effective in reducing to a manageable number of labels. The resulting list of labels is saved in a file called 'outfile.npy'.</p><br>
 
-- #### cleanLabels.py
- **inputs**: uncleaned labels  
- **outputs**: cleaned labels in the folder "clean/"  
- Single threaded version of cleaning algorithm, copies each label onto its own blank array to dilate and erode it, then returns to main array.
+<h3>Generate Meshes</h3>
+<p>This step applies the Marching Cubes algorithm to convert the labels selected in the previous step to a series of meshes with the .obj file extension, allowing them to be viewed in software such as MeshLab and syGlass.</p><br>
 
-- #### organizeLabels.py
- **inputs**: labeled stack of EM images  
- **outputs**: folder for each label containing 2 numpy save files, one with the local coordinates of the label and the other with the global coordinates of the bounding box for this label  
- Finds the bounding box for each label and changes the global coordinates to local coordinates. Saves each set of local coordinates along with global coordinates for the bounding box of the label.
+<h3>Label Feature Extraction and Classification</h3>
+<p>When the meshes from the previous step are examined, the user will notice many false positives (meshes of objects other than axons) as well as some incomplete and falsely merged axons. This step helps remedy this by applying a supervised machine learning algorithm which separates the complete axon meshes from all others. The user must first manually label a few hundred objects in syGlass to provide the training set. The algorithm then performs the following steps:<br>
+<ul>
+<li>Generation of a csv file containing morphological features of each mesh</li>
+<li>Preprocessing of the data using linear discriminant analysis</li>
+<li>Creation of support vector machine model using training set</li>
+<li>Prediction of labels for the unknown objects</li>
+<li>Once the 'good axons' are identified, their obj files are saved to a separate folder</li>
+</ul></p><br>
 
-### 3. Make meshes from the labels.
+# Output Usage
 
-- #### marching_cubes.cpython-34m.so
- Provides C code for making meshes
-
-- #### parallelMesh3.py
- Unsure whether this or multiMesh3 is the more up-to-date.
-
-- #### multiMesh3.py
- **inputs**: path to labels, path to output meshes  
- **outputs**: folder full of meshes  
- Multithreaded, updated version of buildMeshes3.py.
- 
-- #### buildmeshes3.py
- **inputs**: path to labels, path to output meshes  
- **outputs**: folder full of meshes  
- Takes the labels and creates .obj files for each one. multiMesh3.py is more up to date.
-
-## Other Stuff
-
-- ### arrayJobCleanLabels, arrayJobContour,arrayJobThreshold
- Not sure what these are for, don't appear to be part of the main pipeline
-
-- ### coolCodes
- "command to interactly take over gspirou node"
-
-- ### deleteLabels.py
- **inputs**: path to thresholded EM image stack, list of labels to delete  
- **outputs**: image stack with labels removed  
- Deletes a list of labels from the stack.
-
-- ### extractLabels.py
- **inputs**: path to thresholded EM image stack, list of labels to extract:  
- **outputs**: image stack with only the extracted labels in folder "extractedLabels/"  
- Extracts a list of labels from the stack.
-
-- ### findMissing.py
- **inputs**: two paths to different folders  
- **outputs**: a list of items present in one folder but not the other  
- Determines which items in one folder are missing from another, and returns a list of these items.
-
-- ### installcv3.sh
- bash script for installing cv3.
-
-- ### multisaar.py, multisaar2.py, saar.py
- Out of date scripts containing an embryonic version of our full pipeline.
-
-- ### singleSaarContour.py, singleSaarThreshold.py
- Out of date scripts that use pool.map to perform threshold and contouring.
-
-- ### tiff_setup.py, tiffile.py
- For working with tiffs
+<p>Saar produces a folder containing a set of .obj mesh files for each axon segmented from the EM volume. These obj files can be used to view the axons in 3D visualization software such as MeshLab and syGlass.</p>

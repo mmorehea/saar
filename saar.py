@@ -589,7 +589,7 @@ def main():
 			# 27 Feb 2018: used value of 50 because we wanted to get more meshes for the syGlass connection step
 			print("Select a minimum label size:")
 			minLabelSize = float(input(">"))
-			code.interact(local=locals())
+
 			start = timer()
 			emImages = applyParams(emPaths)
 			applyParamsTime = timer() - start

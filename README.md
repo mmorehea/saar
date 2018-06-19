@@ -18,8 +18,8 @@ Marching Cubes</P>
 
 <h3>To run:</h3>
 <p>Open a terminal or command window, navigate to the Saar directory, and type:<br><br>
-<i>python saar.py emFolder/ emptyFolder1/ emptyfolder2/ destinationFolder/</i><br><br>
-<p>Where 'emFolder' contains a sequence of EM tiff images, the two empty folders will hold the thresholded and labeled images respectively for intermediate steps, and 'destinationFolder' will contain the the resulting meshes.<br></p>
+<i>python saar.py emFolder/ emptyFolder1/ emptyfolder2/ destinationFolder/</i><br>
+<p>Where 'emFolder' contains a sequence of EM tiff images, the two empty folders will hold the thresholded and labeled images respectively for intermediate steps, and 'destinationFolder' will contain the the resulting meshes.<br><br></p>
 
 <h3>Main Menu</h3>
 <p>Saar first presents the user with a main menu, allowing the user to start from any of the main steps in the segmentation process. For the first time, it is recommended that these each be done in order.</p><br>

@@ -25,7 +25,7 @@ Marching Cubes</P>
 <p>Saar first presents the user with a main menu, allowing the user to start from any of the main steps in the segmentation process. For the first time, it is recommended that these each be done in order.</p><br>
 
 <h3>Set Parameters</h3>
-<p>This step presents the the user with a series of trackbars allowing them to set a series of parameters used for segmentation. These trackbars are accompanied by a sample image from the volume allowing the user to preview the effects of changing the parameter. Each parameter is set 3 times, once for each third of the image stack. The parameters include:<br><br>
+<p>This step presents the user with a series of trackbars allowing them to set a series of parameters used for segmentation. These trackbars are accompanied by a sample image from the volume allowing the user to preview the effects of changing the parameter. Each parameter is set 3 times, once for each third of the image stack. The parameters include:<br><br>
 <b>Threshold Value:</b> Yields a binary image. The regions with intensity above the threshold value are set to 1, and the remaining regions are set to 0. This should be adjusted until the axons are clearly delineated but not too diminished.<br>
 <b>Remove Noise Kernel Size:</b> The optimal kernel size for noise removal will vary depending on the image resolution. This should be adjusted to remove the most noise while minimizing distortion to the image.<br>
 <b>Filter Size Range:</b> This specifies a percentile range for objects in the image to be removed based on their area in pixels. This should be set to remove the most noise while removing as few axons as possible.<br>

@@ -35,7 +35,7 @@ Marching Cubes</P>
 <p>After parameterization, Saar saves the parameters to a file called 'Saar.ini'. This step applies the parameters to each image in the stack, saving the results to the first empty folder specified. The user can then view the stack in image software such as ImageJ and, if needed, adjust the parameters and re-run this step.</p><br>
 
 <h3>Connected Component Labeling</h3>
-<p>In this step, Saar labels the image stack according to connected components</p><br>
+<p>In this step, Saar labels the image stack according to connected components.</p><br>
 
 <h3>Filter Labels by Size</h3>
 <p>Most of the labels produced by connected components are too small to be useful. This step scans the volume and makes a list of the labels that are bigger than a user-specified size threshold. Values in the range of 50-200 are typically effective in reducing to a manageable number of labels. The resulting list of labels is saved in a file called 'outfile.npy'.</p><br>

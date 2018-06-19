@@ -587,8 +587,9 @@ def main():
 			# Any label smaller than this size will be eliminated in makeItemList
 			# Recommended value: 150
 			# 27 Feb 2018: used value of 50 because we wanted to get more meshes for the syGlass connection step
-			minLabelSize = 50
-
+			print("Select a minimum label size:")
+			minLabelSize = float(input(">"))
+			code.interact(local=locals())
 			start = timer()
 			emImages = applyParams(emPaths)
 			applyParamsTime = timer() - start
@@ -615,8 +616,8 @@ def main():
 		elif choice=='4':
 			connectedComponents(massFolderPath, labelsFolderPath)
 		elif choice=='5':
-
-			minLabelSize = 50
+			print("Select a minimum label size:")
+			minLabelSize = float(input(">"))
 			makeItemList(labelsFolderPath, minLabelSize)
 		elif choice=='6':
 			generateMeshes(meshesFolderPath, labelsFolderPath)

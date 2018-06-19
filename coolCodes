@@ -1,2 +1,0 @@
-qsub -l nodes=1:large -q gspirou -I -n
-//command to interactly take over gspirou node

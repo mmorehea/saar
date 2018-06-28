@@ -210,10 +210,6 @@ def main():
 	with open ('outfile.npy', 'rb') as fp:
 		itemlist = np.load(fp)
 		itemlist = itemlist[1:]
-
-	# Delete this block for original functionality
-	itemlist = np.unique(labelStack)[1:]
-	itemlist = [169059.0, 172269.0, 174325.0, 175045.0, 177098.0, 186824.0, 190267.0, 192702.0, 193412.0, 208276.0, 208277.0, 210878.0, 212089.0, 219793.0, 220919.0, 242693.0, 244805.0, 253414.0, 211227.0, 214705.0, 237813.0, 221397.0, 364850.0, 91021.0, 246321.0, 362637.0, 311495.0, 268035.0, 373193.0, 371313.0, 352859.0, 400846.0, 362637.0, 80774.0, 240946.0, 222854.0, 2364.0, 68782.0]
 	
 	itemlist = sorted([itm for itm in itemlist if int(itm) not in alreadyDone])
 
